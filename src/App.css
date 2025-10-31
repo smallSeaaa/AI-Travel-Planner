@@ -489,24 +489,284 @@ nav a:hover {
   line-height: 1.5;
 }
 
-.regenerate-btn {
-  background-color: var(--secondary-color);
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.25s, transform 0.1s;
+/* 我的计划页面样式 */
+.my-plans-page {
+  padding: 20px 0;
 }
 
-.regenerate-btn:hover {
+.page-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.page-content h1 {
+  margin-bottom: 30px;
+  color: var(--text-color);
+  text-align: center;
+}
+
+.plans-list {
+  margin-top: 20px;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.plan-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.plan-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.plan-card h3 {
+  margin-top: 0;
+  color: var(--primary-color);
+  font-size: 1.3rem;
+}
+
+.plan-card-details {
+  display: flex;
+  gap: 15px;
+  margin: 15px 0;
+  color: #666;
+}
+
+.plan-card-date {
+  font-size: 0.9rem;
+  color: #888;
+  margin-bottom: 15px;
+}
+
+.plan-card-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.plan-card-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.view-btn {
+  background-color: #2196F3;
+  color: white;
+}
+
+.view-btn:hover {
+  background-color: #1976D2;
+}
+
+.delete-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.delete-btn:hover {
+  background-color: #d32f2f;
+}
+
+.delete-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.delete-btn.small {
+  flex: 0 0 auto;
+}
+
+.edit-btn {
+  background-color: #ff9800;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-right: 10px;
+}
+
+.edit-btn:hover {
+  background-color: #e68900;
+}
+
+.no-plans {
+  text-align: center;
+  padding: 60px 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.no-plans p {
+  margin-bottom: 20px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.no-plans button {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.no-plans button:hover {
   background-color: #2563eb;
 }
 
-.regenerate-btn:active {
-  transform: translateY(1px);
+.auth-required {
+  text-align: center;
+  padding: 60px 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.auth-required p {
+  margin-bottom: 20px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.auth-required button {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.auth-required button:hover {
+  background-color: #2563eb;
+}
+
+/* 计划详情视图样式 */
+.plan-details-view {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.back-btn {
+  background-color: #f1f1f1;
+  color: #333;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.back-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.plan-header {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.plan-header h2 {
+  margin-top: 0;
+  color: var(--primary-color);
+}
+
+.plan-meta {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.plan-details-view .plan-actions {
+  margin-top: 40px;
+  justify-content: flex-start;
+}
+
+.plan-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.save-plan-btn {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: background-color 0.3s;
+  flex: 1;
+  min-width: 200px;
+}
+
+.save-plan-btn:hover {
+  background-color: #1976D2;
+}
+
+.save-plan-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.regenerate-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: background-color 0.3s;
+  flex: 1;
+  min-width: 200px;
+}
+
+.regenerate-btn:hover {
+  background-color: #45a049;
+}
+
+.save-success-message {
+  background-color: #dff0d8;
+  color: #3c763d;
+  padding: 12px;
+  margin-top: 20px;
+  border-radius: 4px;
+  border: 1px solid #d6e9c6;
+  font-weight: 500;
+}
+
+.save-error-message {
+  background-color: #f2dede;
+  color: #a94442;
+  padding: 12px;
+  margin-top: 20px;
+  border-radius: 4px;
+  border: 1px solid #ebccd1;
+  font-weight: 500;
 }
 
 .features-section {
