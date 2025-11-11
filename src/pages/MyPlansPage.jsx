@@ -139,18 +139,17 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
         if (dayPlan.activities) {
           const dayMarkers = [];
           dayPlan.activities.forEach((activity, index) => {
-            // 假设activity中包含位置信息，如果没有则使用默认坐标
-            const lat = activity.lat || 39.9042 + (Math.random() - 0.5) * 0.1;
-            const lng = activity.lng || 116.4074 + (Math.random() - 0.5) * 0.1;
-            
-            dayMarkers.push({
-              key: `${dayIndex}-${index}`,
-              position: { lat, lng },
-              title: activity.description,
-              type: activity.type,
-              day: dayPlan.day,
-              time: activity.time
-            });
+            // 只有当活动有实际坐标信息时才添加到地图标记
+            if (activity.lat && activity.lng) {
+              dayMarkers.push({
+                key: `${dayIndex}-${index}`,
+                position: { lat: activity.lat, lng: activity.lng },
+                title: activity.description,
+                type: activity.type,
+                day: dayPlan.day,
+                time: activity.time
+              });
+            }
           });
           
           markers.push(...dayMarkers);
