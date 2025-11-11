@@ -50,7 +50,7 @@ export const travelPlanService = {
         transportation: JSON.parse(plan.transportation),
         daily_plans: JSON.parse(plan.daily_plans),
         tips: JSON.parse(plan.tips),
-        original_request: JSON.parse(plan.original_request)
+        original_request: plan.original_request // 不再解析，直接使用保存的字符串
       }))
       
       return { success: true, data: parsedPlans }
@@ -107,6 +107,38 @@ export const travelPlanService = {
       return { success: true }
     } catch (error) {
       console.error('删除旅行计划失败:', error)
+      return { success: false, error: error.message }
+    }
+  },
+  
+  // 更新旅行计划
+  async updateTravelPlan(planId, userId, updatedPlan) {
+    try {
+      const { data, error } = await supabase
+        .from('travel_plans')
+        .update({
+          destination: updatedPlan.destination,
+          duration: updatedPlan.duration,
+          travelers: updatedPlan.travelers,
+          budget: updatedPlan.budget,
+          accommodation: JSON.stringify(updatedPlan.accommodation),
+          transportation: JSON.stringify(updatedPlan.transportation),
+          daily_plans: JSON.stringify(updatedPlan.dailyPlans),
+          tips: JSON.stringify(updatedPlan.tips),
+          original_request: JSON.stringify(updatedPlan.original_request),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', planId)
+        .eq('user_id', userId)
+        .select()
+      
+      if (error) {
+        throw error
+      }
+      
+      return { success: true, data: data[0] }
+    } catch (error) {
+      console.error('更新旅行计划失败:', error)
       return { success: false, error: error.message }
     }
   }

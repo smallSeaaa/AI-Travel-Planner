@@ -619,28 +619,37 @@ async function calculateBudgetSummary(tripId) {
 
 ## 6. 语音识别模块
 
-### 6.1 语音转文本
+本项目使用浏览器内置的Web Speech API进行语音识别，无需额外的后端API。前端通过直接调用浏览器API实现语音到文本的转换，然后解析为旅行需求。
 
-- **URL**: `/api/speech/transcribe`
-- **Method**: `POST`
-- **请求体**:
-  ```json
-  {
-    "audio_data": "base64编码的音频数据",
-    "audio_format": "wav",
-    "language": "zh-CN"
-  }
-  ```
-- **成功响应**:
-  ```json
-  {
-    "code": 200,
-    "message": "success",
-    "data": {
-      "text": "我想去日本东京，5天，预算1万元"
+### 核心功能：
+- 浏览器兼容性检测
+- 中文语音识别
+- 旅行信息提取与解析
+- 错误处理与用户提示
+
+### 使用方式：
+```javascript
+import { processSpeechInput } from './services/speechRecognitionService';
+
+// 处理语音输入并获取旅行计划
+const handleVoiceInput = async () => {
+  try {
+    const travelInfo = await processSpeechInput();
+    // 使用识别结果生成旅行计划
+    if (travelInfo) {
+      const plan = await generateTravelPlan(travelInfo);
+      return plan;
     }
+  } catch (error) {
+    console.error('语音处理失败:', error);
   }
-  ```
+};
+```
+
+### 浏览器支持说明
+- Chrome, Edge, Safari等现代浏览器均支持Web Speech API
+- 某些浏览器可能需要HTTPS环境
+- 移动设备上的浏览器支持可能有所差异
 
 ## 7. 数据同步模块
 

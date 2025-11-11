@@ -31,21 +31,14 @@ export const generateTravelPlan = async (tripDetails) => {
 
 /**
  * 构建旅行规划提示词
- * @param {Object} tripDetails - 旅行详情
+ * @param {string} tripDetails - 用户输入的旅行需求文本
  * @returns {string} - 格式化的提示词
  */
 const buildTravelPrompt = (tripDetails) => {
-  const startDate = new Date(tripDetails.startDate);
-  const endDate = new Date(tripDetails.endDate);
-  const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-  
-  return `请帮我生成一个详细的${tripDetails.destination}旅行计划，满足以下要求：
+  // 直接使用用户输入的原始文本作为旅行需求
+  return `请根据以下旅行需求，生成一个详细的旅行计划：
 
-旅行天数：${days}天
-旅行日期：从${tripDetails.startDate}到${tripDetails.endDate}
-预算：${tripDetails.budget}元
-同行人数：${tripDetails.peopleCount}人
-旅行偏好：${tripDetails.preferences.join('、')}
+${tripDetails}
 
 请提供以下内容：
 1. 住宿建议：推荐适合的酒店或民宿
@@ -86,7 +79,8 @@ JSON结构如下：
     // 更多提示...
   ]
 }
-旅行天数需要包含我指定的开始日期和结束日期，包括这两天。请不要少写任何一天。
+请根据用户提供的信息，合理推断旅行天数、人数、预算等信息并填入JSON中。
+旅行天数需要包含我指定的日期，请不要少写任何一天！！如果用户没有填写日期，默认为3天。
 `;
 };
 
@@ -95,106 +89,18 @@ JSON结构如下：
  */
 const callLLMAPI = async (prompt) => {
   // 获取环境变量中的API密钥和基础URL（使用Vite的import.meta.env）
-  const apiKey = import.meta.env.REACT_APP_LLM_API_KEY;
-  const apiBaseUrl = import.meta.env.REACT_APP_LLM_API_BASE_URL || '';
+  const apiKey = import.meta.env.VITE_LLM_API_KEY;
+  const apiBaseUrl = import.meta.env.VITE_LLM_API_BASE_URL || '';
   
   // 检查API密钥是否存在
   if (!apiKey || !apiBaseUrl) {
-    console.warn('未配置有效的API密钥或基础URL，返回模拟数据');
-    return getMockLLMResponse(prompt);
+    throw new Error('未配置有效的LLM API密钥或基础URL，请在.env文件中正确配置VITE_LLM_API_KEY和VITE_LLM_API_BASE_URL');
   }
   
   // 规范化API基础URL，确保以斜杠结尾
   const normalizedBaseUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl : `${apiBaseUrl}/`;
   return callZhiPuAI(prompt, apiKey, normalizedBaseUrl);
 
-};
-
-/**
- * 获取模拟的旅行计划数据
- * 当API调用失败时使用
- */
-export const getMockTravelPlan = () => {
-  return {
-    overview: {
-      title: "模拟旅行计划 - 北京三日游",
-      duration: "3天2晚",
-      totalBudget: "约¥2000/人",
-      bestTime: "春季、秋季",
-      summary: "这是一个模拟的北京三日游行程，包含了故宫、长城、天坛等著名景点，以及当地特色美食推荐。"
-    },
-    accommodation: [
-      {
-        name: "北京王府井希尔顿酒店",
-        location: "东城区王府井东街8号",
-        priceRange: "¥1000-1500/晚",
-        rating: 4.5,
-        description: "位于市中心，交通便利，周边有众多购物中心和餐厅。"
-      }
-    ],
-    transportation: [
-      "机场至市区：乘坐机场快轨，约30分钟，票价¥25",
-      "市内交通：建议购买北京交通卡，可乘坐地铁和公交",
-      "景点间交通：地铁是最便捷的选择，几乎覆盖所有主要景点"
-    ],
-    itinerary: [
-      {
-        day: "第1天",
-        activities: [
-          {
-            time: "08:30-09:00",
-            title: "早餐",
-            description: "酒店内享用早餐"
-          },
-          {
-            time: "09:30-13:00",
-            title: "故宫博物院",
-            description: "参观紫禁城，了解中国古代皇家文化",
-            location: "东城区景山前街4号",
-            price: "¥60"
-          },
-          {
-            time: "13:30-14:30",
-            title: "午餐 - 全聚德烤鸭店",
-            description: "品尝北京特色烤鸭",
-            location: "前门大街30号",
-            price: "¥200/人"
-          },
-          {
-            time: "15:00-17:00",
-            title: "景山公园",
-            description: "登上景山俯瞰故宫全景",
-            location: "西城区景山西街44号",
-            price: "¥2"
-          }
-        ]
-      },
-      {
-        day: "第2天",
-        activities: [
-          {
-            time: "07:30-08:00",
-            title: "早餐",
-            description: "酒店内享用早餐"
-          },
-          {
-            time: "08:30-12:00",
-            title: "八达岭长城",
-            description: "不到长城非好汉，体验世界文化遗产",
-            location: "延庆区八达岭镇",
-            price: "¥40",
-            transportation: "建议乘坐S2线火车，约1.5小时"
-          }
-        ]
-      }
-    ],
-    tips: [
-      "建议提前一周预订热门景点门票，尤其是故宫",
-      "北京天气干燥，请多喝水，做好保湿工作",
-      "景区人流量大，注意保管好个人财物",
-      "尝试当地特色小吃：炸酱面、豆汁儿、焦圈"
-    ]
-  };
 };
 
 /**
@@ -213,13 +119,13 @@ const callZhiPuAI = async (prompt, apiKey, apiBaseUrl) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: import.meta.env.REACT_APP_LLM_MODEL || "glm-4", // 使用环境变量或默认智谱GLM-4模型
+        model: import.meta.env.VITE_LLM_MODEL || "glm-4", // 使用环境变量或默认智谱GLM-4模型
         messages: [
           { role: "system", content: "你是一位专业的旅行规划师，擅长根据用户需求制定详细的旅行计划。请严格按照用户要求的JSON格式返回结果。" },
           { role: "user", content: prompt }
         ],
-        temperature: parseFloat(import.meta.env.REACT_APP_LLM_TEMPERATURE || 0.7),
-        max_tokens: parseInt(import.meta.env.REACT_APP_LLM_MAX_TOKENS || 4000),
+        temperature: parseFloat(import.meta.env.VITE_LLM_TEMPERATURE || 0.7),
+        max_tokens: parseInt(import.meta.env.VITE_LLM_MAX_TOKENS || 4000),
         response_format: { type: "json_object" }
       })
     });

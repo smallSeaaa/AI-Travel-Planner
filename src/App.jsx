@@ -7,21 +7,14 @@ import MyPlansPage from './pages/MyPlansPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoadingSpinner from './components/LoadingSpinner'
 import supabase from './supabaseClient'
-import { generateTravelPlan, getMockTravelPlan } from './services/llmService'
+import { generateTravelPlan } from './services/llmService'
 import { travelPlanService } from './services/travelPlanService'
+import { processSpeechInput } from './services/speechRecognitionService'
 import './App.css'
 
 // 主页组件
 const HomePage = () => {
-  const [tripDetails, setTripDetails] = useState({
-    destination: '',
-    startDate: '',
-    endDate: '',
-    budget: '',
-    peopleCount: '1',
-    preferences: []
-  })
-  const [customPreference, setCustomPreference] = useState('')
+  const [tripDetails, setTripDetails] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
@@ -31,6 +24,12 @@ const HomePage = () => {
   const [saveError, setSaveError] = useState(null)
   const [dbInitialized, setDbInitialized] = useState(false)
   const [dbError, setDbError] = useState(null)
+  // 语音输入相关状态
+  const [isRecording, setIsRecording] = useState(false)
+  const [recording, setRecording] = useState(null)
+  const [speechText, setSpeechText] = useState('')
+  const [speechError, setSpeechError] = useState(null)
+  
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
@@ -42,64 +41,64 @@ const HomePage = () => {
   }
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setTripDetails(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setTripDetails(e.target.value)
   }
-
-  const handlePreferenceToggle = (preference) => {
-    setTripDetails(prev => {
-      if (prev.preferences.includes(preference)) {
-        return {
-          ...prev,
-          preferences: prev.preferences.filter(p => p !== preference)
-        }
-      } else {
-        return {
-          ...prev,
-          preferences: [...prev.preferences, preference]
-        }
-      }
-    })
-  }
-
-  const addCustomPreference = () => {
-    if (customPreference.trim() && !tripDetails.preferences.includes(customPreference.trim())) {
-      setTripDetails(prev => ({
-        ...prev,
-        preferences: [...prev.preferences, customPreference.trim()]
-      }))
-      setCustomPreference('')
+  
+  // 处理语音输入开始
+  const handleStartSpeechInput = async () => {
+    try {
+      setSpeechError(null)
+      setSpeechText('正在录音...')
+      setIsRecording(true)
+      
+      // 启动语音识别
+      const speechProcess = await processSpeechInput()
+      setRecording(speechProcess)
+    } catch (err) {
+      console.error('语音输入启动失败:', err)
+      setSpeechError('无法启动语音输入，请检查麦克风权限')
+      setIsRecording(false)
+      setTimeout(() => setSpeechError(null), 3000)
     }
   }
-
-  const removeCustomPreference = (preference) => {
-    setTripDetails(prev => ({
-      ...prev,
-      preferences: prev.preferences.filter(p => p !== preference)
-    }))
+  
+  // 处理语音输入结束
+  const handleStopSpeechInput = async () => {
+    try {
+      if (recording) {
+        setSpeechText('正在识别...')
+        
+        // 停止录音并获取识别结果
+        const result = await recording.stop()
+        
+        setSpeechText(result.originalText)
+        // 直接将语音识别结果作为输入文本
+        setTripDetails(result.originalText)
+        
+        setIsRecording(false)
+        setRecording(null)
+        
+        // 3秒后清除提示文本
+        setTimeout(() => setSpeechText(''), 3000)
+      }
+    } catch (err) {
+      console.error('语音识别失败:', err)
+      setSpeechError('语音识别失败，请重试')
+      setIsRecording(false)
+      setRecording(null)
+      setTimeout(() => {
+        setSpeechError(null)
+        setSpeechText('')
+      }, 3000)
+    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // 表单验证
-    if (!tripDetails.destination.trim()) {
-      setError('请输入旅行目的地')
-      return
-    }
-    if (!tripDetails.startDate || !tripDetails.endDate) {
-      setError('请选择旅行起止日期')
-      return
-    }
-    if (!tripDetails.budget || isNaN(tripDetails.budget) || tripDetails.budget <= 0) {
-      setError('请输入有效的预算金额')
-      return
-    }
-    if (!tripDetails.peopleCount || isNaN(tripDetails.peopleCount) || tripDetails.peopleCount <= 0) {
-      setError('请输入有效的同行人数')
+    // 表单验证 - 只检查是否有输入内容
+    if (!tripDetails.trim()) {
+      setError('请输入您的旅行需求')
       return
     }
 
@@ -117,27 +116,10 @@ const HomePage = () => {
       // 打印原始计划数据，帮助调试
       console.log('大模型原始返回结果:', plan)
       
-      // 验证旅行计划格式是否完整
-      if (validateTravelPlan(plan)) {
-        // 进一步检查内部结构，特别是可能包含复杂对象的字段
-        console.log('计划数据结构验证:', {
-          destination: typeof plan.destination,
-          duration: typeof plan.duration,
-          travelers: typeof plan.travelers,
-          budget: typeof plan.budget,
-          accommodation: typeof plan.accommodation,
-          transportation: typeof plan.transportation,
-          dailyPlans: Array.isArray(plan.dailyPlans),
-          tips: Array.isArray(plan.tips)
-        })
-        setGeneratedPlan(plan)
-        setSuccess(true)
-      } else {
-        console.warn('收到的旅行计划格式不完整，使用模拟数据')
-        setGeneratedPlan(getMockTravelPlan())
-        setError('生成的旅行计划格式有误，已显示模拟数据供参考')
-        setSuccess(true)
-      }
+      // 使用大语言模型返回的实际结果，不再进行格式验证
+      console.log('使用大语言模型返回的实际旅行计划')
+      setGeneratedPlan(plan)
+      setSuccess(true)
       
       // 滚动到结果区域
       document.getElementById('trip-plan-section')?.scrollIntoView({ behavior: 'smooth' })
@@ -145,9 +127,6 @@ const HomePage = () => {
       // 显示详细错误信息
       setError(`生成旅行计划失败: ${err.message || '未知错误'}`)
       console.error('Error:', err)
-      // 设置模拟计划，确保用户体验
-      setGeneratedPlan(getMockTravelPlan())
-      setSuccess(true)
       // 重置保存状态
       setSaveSuccess(false)
       setSaveError(null)
@@ -212,7 +191,7 @@ const HomePage = () => {
       // 不手动设置user_id，让Supabase自动填充，这样能更好地符合RLS策略
       const { data, error } = await supabase.from('travel_plans').insert({
         // 移除手动设置的user_id，让Supabase自动填充
-        destination: generatedPlan.destination,
+        destination: generatedPlan.destination || '未知',
         duration: durationValue,
         travelers: travelersValue,
         budget: budgetValue,
@@ -220,7 +199,7 @@ const HomePage = () => {
         transportation: JSON.stringify(generatedPlan.transportation),
         daily_plans: JSON.stringify(generatedPlan.dailyPlans),
         tips: JSON.stringify(generatedPlan.tips),
-        original_request: JSON.stringify(tripDetails),
+        original_request: JSON.stringify(tripDetails), // 转换为JSON字符串保存
         created_at: new Date().toISOString()
       }).select()
       
@@ -270,122 +249,55 @@ const HomePage = () => {
             <h2>输入您的旅行需求</h2>
             <form onSubmit={handleSubmit} className="trip-form">
               <div className="form-group">
-                <label htmlFor="destination">旅行目的地</label>
-                <input
-                  type="text"
-                  id="destination"
-                  name="destination"
-                  value={tripDetails.destination}
-                  onChange={handleInputChange}
-                  placeholder="例如：日本东京"
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="startDate">开始日期</label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    value={tripDetails.startDate}
+                <label htmlFor="tripDetails">旅行需求</label>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <textarea
+                    id="tripDetails"
+                    name="tripDetails"
+                    value={tripDetails}
                     onChange={handleInputChange}
-                    min={new Date().toISOString().split('T')[0]}
+                    placeholder="例如：我想去日本，5天，预算1万元，喜欢美食和动漫，带孩子"
+                    rows="4"
+                    style={{ flex: 1, padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
                   />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="endDate">结束日期</label>
-                  <input
-                    type="date"
-                    id="endDate"
-                    name="endDate"
-                    value={tripDetails.endDate}
-                    onChange={handleInputChange}
-                    min={tripDetails.startDate || new Date().toISOString().split('T')[0]}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="budget">预算（元）</label>
-                  <input
-                    type="number"
-                    id="budget"
-                    name="budget"
-                    value={tripDetails.budget}
-                    onChange={handleInputChange}
-                    placeholder="例如：10000"
-                    min="1"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="peopleCount">同行人数</label>
-                  <input
-                    type="number"
-                    id="peopleCount"
-                    name="peopleCount"
-                    value={tripDetails.peopleCount}
-                    onChange={handleInputChange}
-                    min="1"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>旅行偏好</label>
-                <div className="preferences-container">
-                  {['美食', '购物', '文化', '自然', '历史', '冒险', '亲子', '艺术', '夜生活'].map(pref => (
-                    <label key={pref} className="preference-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={tripDetails.preferences.includes(pref)}
-                        onChange={() => handlePreferenceToggle(pref)}
-                      />
-                      <span>{pref}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>自定义偏好</label>
-                <div className="custom-preference-container">
-                  <input
-                    type="text"
-                    value={customPreference}
-                    onChange={(e) => setCustomPreference(e.target.value)}
-                    placeholder="例如：动漫、带孩子"
-                    onKeyPress={(e) => e.key === 'Enter' && addCustomPreference()}
-                  />
-                  <button 
-                    type="button" 
-                    className="add-preference-btn"
-                    onClick={addCustomPreference}
-                    disabled={!customPreference.trim()}
+                  <button
+                    type="button"
+                    style={{
+                      backgroundColor: isRecording ? '#F44336' : '#4CAF50',
+                      border: 'none',
+                      borderRadius: '4px',
+                      color: 'white',
+                      fontSize: '1.5rem',
+                      padding: '0.75rem 1rem',
+                      cursor: 'pointer',
+                      minWidth: '50px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      animation: isRecording ? 'pulse 1s infinite' : 'none'
+                    }}
+                    onClick={isRecording ? handleStopSpeechInput : handleStartSpeechInput}
+                    title={isRecording ? '点击停止录音' : '点击开始语音输入'}
                   >
-                    添加
+                    🎤
                   </button>
                 </div>
-                {tripDetails.preferences.filter(p => !['美食', '购物', '文化', '自然', '历史', '冒险', '亲子', '艺术', '夜生活'].includes(p)).map(pref => (
-                  <span key={pref} className="custom-preference-tag">
-                    {pref}
-                    <button 
-                      type="button" 
-                      className="remove-preference-btn"
-                      onClick={() => removeCustomPreference(pref)}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+                {speechText && <div style={{ color: '#4CAF50', fontStyle: 'italic', marginTop: '0.5rem', fontSize: '0.9rem' }}>{speechText}</div>}
+                {speechError && <div style={{ color: '#F44336', marginTop: '0.5rem', fontSize: '0.9rem' }}>{speechError}</div>}
+                <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>请在文本框中输入您的旅行需求，或点击麦克风图标使用语音输入</div>
               </div>
 
               {error && <p className="error-message">{error}</p>}
+              {isRecording && (
+                <div className="recording-indicator">
+                  <div className="recording-dot"></div>
+                  <span>正在录音，请说出您的旅行需求，包括旅行目的地、日期、预算、同行人数、旅行偏好等</span>
+                </div>
+              )}
               <button 
                 type="submit" 
                 className="submit-button" 
-                disabled={isLoading}
+                disabled={isLoading || isRecording}
               >
                 {isLoading ? '生成中...' : '生成旅行计划'}
               </button>
@@ -407,11 +319,15 @@ const HomePage = () => {
               <div className="plan-highlights">
                 <div className="highlight-card">
                   <h4>住宿建议</h4>
-                  <p>{generatedPlan.accommodation}</p>
+                  <p>{typeof generatedPlan.accommodation === 'object' && generatedPlan.accommodation !== null 
+                    ? JSON.stringify(generatedPlan.accommodation, null, 2) 
+                    : generatedPlan.accommodation || '暂无建议'}</p>
                 </div>
                 <div className="highlight-card">
                   <h4>交通建议</h4>
-                  <p>{generatedPlan.transportation}</p>
+                  <p>{typeof generatedPlan.transportation === 'object' && generatedPlan.transportation !== null 
+                    ? JSON.stringify(generatedPlan.transportation, null, 2) 
+                    : generatedPlan.transportation || '暂无建议'}</p>
                 </div>
               </div>
             </div>

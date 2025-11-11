@@ -100,7 +100,7 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.form-group input:disabled {
+.for                m-group input:disabled {
   background: #f5f5f5;
   cursor: not-allowed;
 }
@@ -112,7 +112,7 @@
   padding: 16px;
   border-radius: 8px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 600;                                                                                       
   cursor: pointer;
   transition: all 0.3s ease;
   margin-top: 10px;
