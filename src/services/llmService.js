@@ -61,7 +61,7 @@ JSON结构如下：
   "dailyPlans": [
     {
       "day": 1,
-      "date": "日期",
+      "date": "", // 不要填写具体日期
       "activities": [
         {
           "time": "09:00",
@@ -80,7 +80,11 @@ JSON结构如下：
   ]
 }
 请根据用户提供的信息，合理推断旅行天数、人数、预算等信息并填入JSON中。
-旅行天数需要包含我指定的日期，请不要少写任何一天！！如果用户没有填写日期，默认为3天。
+注意：
+1. 不要在生成的计划中包含任何具体日期信息！
+2. date字段请保持为空字符串
+3. 在行程安排的文本描述中也不要提及具体日期，只使用"第X天"来表示
+4. 如果用户没有指定旅行天数，默认为3天
 `;
 };
 
@@ -213,17 +217,12 @@ const getMockLLMResponse = (prompt) => {
     // 如果能提取到原始格式需要的信息，保持原始行为
     if (destination !== '未知目的地') {
       // 生成模拟的每日行程
-      const dailyPlans = [];
-      const today = new Date();
-      
-      for (let i = 0; i < days; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        const dateStr = date.toLocaleDateString('zh-CN');
-        
-        dailyPlans.push({
-          day: i + 1,
-          date: dateStr,
+    const dailyPlans = [];
+    
+    for (let i = 0; i < days; i++) {
+      dailyPlans.push({
+        day: i + 1,
+        date: "",
           activities: [
             {
               time: '09:00',
@@ -300,7 +299,7 @@ const getFallbackTravelPlan = (response) => {
     dailyPlans: [
       {
         day: 1,
-        date: new Date().toLocaleDateString('zh-CN'),
+        date: "",
         activities: [
           {
             time: '09:00',

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Routes, Route, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import LoginPage from './pages/LoginPage'
@@ -6,6 +6,7 @@ import RegisterPage from './pages/RegisterPage'
 import MyPlansPage from './pages/MyPlansPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoadingSpinner from './components/LoadingSpinner'
+import MapComponent from './components/MapComponent'
 import supabase from './supabaseClient'
 import { generateTravelPlan } from './services/llmService'
 import { travelPlanService } from './services/travelPlanService'
@@ -13,7 +14,7 @@ import { processSpeechInput } from './services/speechRecognitionService'
 import './App.css'
 
 // 主页组件
-const HomePage = () => {
+const HomePage = ({ onMapUpdate, showSidebar }) => {
   const [tripDetails, setTripDetails] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -72,8 +73,8 @@ const HomePage = () => {
         const result = await recording.stop()
         
         setSpeechText(result.originalText)
-        // 直接将语音识别结果作为输入文本
-        setTripDetails(result.originalText)
+        // 将语音识别结果添加到现有文本之后
+        setTripDetails(prevText => prevText + ' ' + result.originalText)
         
         setIsRecording(false)
         setRecording(null)
@@ -92,6 +93,51 @@ const HomePage = () => {
       }, 3000)
     }
   }
+
+  // 更新地图标记点和路线
+  const updateMapData = (plan) => {
+    if (!plan || !plan.dailyPlans) return;
+    
+    const markers = [];
+    const routes = [];
+    
+    // 提取每日行程中的位置信息
+    plan.dailyPlans.forEach((dayPlan, dayIndex) => {
+      if (dayPlan.activities) {
+        const dayMarkers = [];
+        dayPlan.activities.forEach((activity, index) => {
+          // 假设activity中包含位置信息，如果没有则使用默认坐标
+          const lat = activity.lat || 39.9042 + (Math.random() - 0.5) * 0.1;
+          const lng = activity.lng || 116.4074 + (Math.random() - 0.5) * 0.1;
+          
+          dayMarkers.push({
+            key: `${dayIndex}-${index}`,
+            position: { lat, lng },
+            title: activity.description,
+            type: activity.type,
+            day: dayPlan.day,
+            time: activity.time
+          });
+        });
+        
+        markers.push(...dayMarkers);
+        
+        // 如果有多个地点，创建路线
+        if (dayMarkers.length > 1) {
+          routes.push({
+            key: `route-day-${dayIndex}`,
+            points: dayMarkers.map(marker => marker.position),
+            day: dayPlan.day
+          });
+        }
+      }
+    });
+    
+    // 调用父组件传递的回调函数更新地图数据
+    if (onMapUpdate) {
+      onMapUpdate(markers, routes);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -120,6 +166,9 @@ const HomePage = () => {
       console.log('使用大语言模型返回的实际旅行计划')
       setGeneratedPlan(plan)
       setSuccess(true)
+      
+      // 更新地图数据
+      updateMapData(plan)
       
       // 滚动到结果区域
       document.getElementById('trip-plan-section')?.scrollIntoView({ behavior: 'smooth' })
@@ -221,240 +270,334 @@ const HomePage = () => {
       setIsSaving(false)
     }
   };
-  
-  // 注意：已使用大语言模型API替代模拟数据生成
-  // 相关逻辑已移至 llmService.js 中
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>AI旅行规划师</h1>
-        <nav>
-          <Link to="/">首页</Link>
-          <a href="#">目的地</a>
-          <Link to="/my-plans">我的计划</Link>
-          <a href="#">关于我们</a>
-          {user && (
-            <div className="user-menu">
-              <span className="user-email">{user.email}</span>
-              <button className="logout-btn" onClick={handleLogout}>退出登录</button>
-            </div>
-          )}
-        </nav>
-      </header>
-      
-      <main className="App-content">
-        {!success ? (
-          <section className="trip-form-section">
-            <h2>输入您的旅行需求</h2>
-            <form onSubmit={handleSubmit} className="trip-form">
-              <div className="form-group">
-                <label htmlFor="tripDetails">旅行需求</label>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <textarea
-                    id="tripDetails"
-                    name="tripDetails"
-                    value={tripDetails}
-                    onChange={handleInputChange}
-                    placeholder="例如：我想去日本，5天，预算1万元，喜欢美食和动漫，带孩子"
-                    rows="4"
-                    style={{ flex: 1, padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
-                  />
-                  <button
-                    type="button"
-                    style={{
-                      backgroundColor: isRecording ? '#F44336' : '#4CAF50',
-                      border: 'none',
-                      borderRadius: '4px',
-                      color: 'white',
-                      fontSize: '1.5rem',
-                      padding: '0.75rem 1rem',
-                      cursor: 'pointer',
-                      minWidth: '50px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      animation: isRecording ? 'pulse 1s infinite' : 'none'
-                    }}
-                    onClick={isRecording ? handleStopSpeechInput : handleStartSpeechInput}
-                    title={isRecording ? '点击停止录音' : '点击开始语音输入'}
-                  >
-                    🎤
-                  </button>
-                </div>
-                {speechText && <div style={{ color: '#4CAF50', fontStyle: 'italic', marginTop: '0.5rem', fontSize: '0.9rem' }}>{speechText}</div>}
-                {speechError && <div style={{ color: '#F44336', marginTop: '0.5rem', fontSize: '0.9rem' }}>{speechError}</div>}
-                <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>请在文本框中输入您的旅行需求，或点击麦克风图标使用语音输入</div>
+    <div className="sidebar-content">
+      {!success ? (
+        <section className="trip-form-section">
+          <h2>输入您的旅行需求</h2>
+          <form onSubmit={handleSubmit} className="trip-form">
+            <div className="form-group">
+              <label htmlFor="tripDetails">旅行需求</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                <textarea
+                  id="tripDetails"
+                  name="tripDetails"
+                  value={tripDetails}
+                  onChange={handleInputChange}
+                  placeholder="例如：我想去日本，5天，预算1万元，喜欢美食和动漫，带孩子"
+                  rows="4"
+                  style={{ flex: 1, padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
+                />
+                <button
+                  type="button"
+                  style={{
+                    backgroundColor: isRecording ? '#F44336' : '#4CAF50',
+                    border: 'none',
+                    borderRadius: '4px',
+                    color: 'white',
+                    fontSize: '1.5rem',
+                    padding: '0.75rem 1rem',
+                    cursor: 'pointer',
+                    minWidth: '50px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    animation: isRecording ? 'pulse 1s infinite' : 'none'
+                  }}
+                  onClick={isRecording ? handleStopSpeechInput : handleStartSpeechInput}
+                  title={isRecording ? '点击停止录音' : '点击开始语音输入'}
+                >
+                  🎤
+                </button>
               </div>
+              {speechText && <div style={{ color: '#4CAF50', fontStyle: 'italic', marginTop: '0.5rem', fontSize: '0.9rem' }}>{speechText}</div>}
+              {speechError && <div style={{ color: '#F44336', marginTop: '0.5rem', fontSize: '0.9rem' }}>{speechError}</div>}
+              <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>请在文本框中输入您的旅行需求，或点击麦克风图标使用语音输入</div>
+            </div>
 
-              {error && <p className="error-message">{error}</p>}
-              {isRecording && (
-                <div className="recording-indicator">
-                  <div className="recording-dot"></div>
-                  <span>正在录音，请说出您的旅行需求，包括旅行目的地、日期、预算、同行人数、旅行偏好等</span>
-                </div>
-              )}
-              <button 
-                type="submit" 
-                className="submit-button" 
-                disabled={isLoading || isRecording}
-              >
-                {isLoading ? '生成中...' : '生成旅行计划'}
-              </button>
-            </form>
-          </section>
-        ) : (
-          <section className="trip-plan-section">
-            <h2>您的个性化旅行计划</h2>
-            <div className="plan-overview">
-              <div className="plan-summary">
-                <h3>{generatedPlan.destination}</h3>
-                <div className="plan-details">
-                  <span>行程天数：{generatedPlan.duration}</span>
-                  <span>同行人数：{generatedPlan.travelers}人</span>
-                  <span>预算：{generatedPlan.budget}</span>
-                </div>
+            {error && <p className="error-message">{error}</p>}
+            {isRecording && (
+              <div className="recording-indicator">
+                <div className="recording-dot"></div>
+                <span>正在录音，请说出您的旅行需求，包括旅行目的地、日期、预算、同行人数、旅行偏好等</span>
               </div>
-              
-              <div className="plan-highlights">
-                <div className="highlight-card">
-                  <h4>住宿建议</h4>
-                  <p>{typeof generatedPlan.accommodation === 'object' && generatedPlan.accommodation !== null 
-                    ? JSON.stringify(generatedPlan.accommodation, null, 2) 
-                    : generatedPlan.accommodation || '暂无建议'}</p>
-                </div>
-                <div className="highlight-card">
-                  <h4>交通建议</h4>
-                  <p>{typeof generatedPlan.transportation === 'object' && generatedPlan.transportation !== null 
-                    ? JSON.stringify(generatedPlan.transportation, null, 2) 
-                    : generatedPlan.transportation || '暂无建议'}</p>
-                </div>
+            )}
+            <button 
+              type="submit" 
+              className="submit-button" 
+              disabled={isLoading || isRecording}
+            >
+              {isLoading ? '生成中...' : '生成旅行计划'}
+            </button>
+          </form>
+        </section>
+      ) : (
+        <section className="trip-plan-section" id="trip-plan-section">
+          <h2>您的个性化旅行计划</h2>
+          <div className="plan-overview">
+            <div className="plan-summary">
+              <h3>{generatedPlan?.destination || '未知目的地'}</h3>
+              <div className="plan-details">
+                <span>行程天数：{generatedPlan?.duration || '0'}</span>
+                <span>同行人数：{generatedPlan?.travelers || '1'}人</span>
+                <span>预算：{generatedPlan?.budget || '0'}</span>
               </div>
-            </div>
-
-            <div className="daily-plans">
-              <h3>每日行程安排</h3>
-              {(generatedPlan.dailyPlans || []).map((dayPlan) => (
-                <div key={dayPlan.day} className="day-plan-card">
-                  <div className="day-header">
-                    <h4>第{dayPlan.day}天</h4>
-                    <span>{dayPlan.date}</span>
-                  </div>
-                  <div className="activities-list">
-                    {(dayPlan.activities || []).map((activity, index) => (
-                      <div key={index} className="activity-item">
-                        <div className="activity-time">{activity.time}</div>
-                        <div className="activity-content">
-                          <span className={`activity-type ${activity.type}`}>{activity.type}</span>
-                          <p className="activity-description">{activity.description}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="travel-tips">
-              <h3>旅行小贴士</h3>
-              <ul>
-                {(generatedPlan.tips || []).map((tip, index) => (
-                  <li key={index}>{tip}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="plan-actions">
-              <button 
-                className="save-plan-btn"
-                onClick={handleSavePlan}
-                disabled={isSaving}
-              >
-                {isSaving ? '保存中...' : '保存旅行计划'}
-              </button>
-              <button 
-                className="regenerate-btn"
-                onClick={() => setSuccess(false)}
-              >
-                生成新的旅行计划
-              </button>
             </div>
             
-            {saveSuccess && (
-              <div className="save-success-message">
-                ✅ 旅行计划保存成功！可在"我的计划"页面查看
+            <div className="plan-highlights">
+              <div className="highlight-card">
+                <h4>住宿建议</h4>
+                <p>{typeof generatedPlan.accommodation === 'object' && generatedPlan.accommodation !== null 
+                  ? JSON.stringify(generatedPlan.accommodation, null, 2) 
+                  : generatedPlan.accommodation || '暂无建议'}</p>
               </div>
-            )}
-            {saveError && (
-              <div className="save-error-message">
-                ❌ {saveError}
-              </div>
-            )}
-          </section>
-        )}
-
-        {!success && (
-          <section className="features-section">
-            <h2>我们的特点</h2>
-            <div className="features-grid">
-              <div className="feature-card">
-                <h3>智能行程规划</h3>
-                <p>根据您的喜好生成个性化旅行计划</p>
-              </div>
-              <div className="feature-card">
-                <h3>实时预算计算</h3>
-                <p>自动估算旅行费用，帮助您控制开支</p>
-              </div>
-              <div className="feature-card">
-                <h3>景点推荐</h3>
-                <p>基于您的兴趣推荐当地热门景点</p>
+              <div className="highlight-card">
+                <h4>交通建议</h4>
+                <p>{typeof generatedPlan.transportation === 'object' && generatedPlan.transportation !== null 
+                  ? JSON.stringify(generatedPlan.transportation, null, 2) 
+                  : generatedPlan.transportation || '暂无建议'}</p>
               </div>
             </div>
-          </section>
-        )}
-      </main>
+          </div>
 
-      <footer className="App-footer">
-        <p>© 2024 AI旅行规划师 - 让每一次旅行都充满惊喜</p>
-        <div className="footer-links">
-          <Link to="#">隐私政策</Link>
-          <Link to="#">使用条款</Link>
-          <Link to="#">联系我们</Link>
-        </div>
-      </footer>
+          <div className="daily-plans">
+            <h3>每日行程安排</h3>
+            {(generatedPlan.dailyPlans || []).map((dayPlan) => (
+              <div key={dayPlan.day} className="day-plan-card">
+                <div className="day-header">
+                  <h4>第{dayPlan.day}天</h4>
+                </div>
+                <div className="activities-list">
+                  {(dayPlan.activities || []).map((activity, index) => (
+                    <div key={index} className="activity-item">
+                      <div className="activity-time">{activity.time}</div>
+                      <div className="activity-content">
+                        <span className={`activity-type ${activity.type}`}>{activity.type}</span>
+                        <p className="activity-description">{activity.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="travel-tips">
+            <h3>旅行小贴士</h3>
+            <ul>
+              {(generatedPlan.tips || []).map((tip, index) => (
+                <li key={index}>{tip}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="plan-actions">
+            <button 
+              className="save-plan-btn"
+              onClick={handleSavePlan}
+              disabled={isSaving}
+            >
+              {isSaving ? '保存中...' : '保存旅行计划'}
+            </button>
+            <button 
+              className="regenerate-btn"
+              onClick={() => setSuccess(false)}
+            >
+              生成新的旅行计划
+            </button>
+          </div>
+          
+          {saveSuccess && (
+            <div className="save-success-message">
+              ✅ 旅行计划保存成功！可在"我的计划"页面查看
+            </div>
+          )}
+          {saveError && (
+            <div className="save-error-message">
+              ❌ {saveError}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   )
 }
 
-// 应用入口组件
+// 应用入口组件 - 重构为保持地图不变的结构
+// 创建一个登录后的布局组件，包含地图和侧边栏
+const LoggedInLayout = ({ children }) => {
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [mapMarkers, setMapMarkers] = useState([]);
+  const [mapRoutes, setMapRoutes] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+
+  // 为地图添加样式 - 缩小宽度为四分之一，侧边栏收起时全屏显示
+  const mapContainerStyle = {
+    position: 'fixed',
+    top: 60, // 导航栏高度
+    right: 0,
+    bottom: 0,
+    width: showSidebar ? '25%' : '100%', // 侧边栏展开时宽度为25%，收起时全屏显示
+    zIndex: 1,
+    transition: 'width 0.3s ease'
+  };
+
+  const sidebarContainerStyle = {
+    position: 'fixed',
+    top: 60,
+    left: 0,
+    bottom: 0,
+    width: '75%', // 侧边栏展开时占75%
+    zIndex: 2,
+    overflowY: 'auto'
+  };
+
+  return (
+    <div style={{ display: 'flex', height: '100vh' }}>
+      {/* 地图容器 - 固定位置，只在登录后显示 */}
+      <div style={mapContainerStyle} className="map-main">
+        <MapComponent 
+          markers={mapMarkers}
+          routes={mapRoutes}
+          onPointClick={setSelectedLocation}
+          center={{ lat: 39.9042, lng: 116.4074 }} // 默认北京坐标
+          zoom={12}
+        />
+        
+        {/* 改进的侧边栏控制按钮 - 始终可见，美观且功能完整 */}
+        <button 
+          className="sidebar-toggle"
+          onClick={() => setShowSidebar(!showSidebar)}
+          title={showSidebar ? '收起侧边栏' : '展开侧边栏'}
+          style={{
+            position: 'fixed',
+            left: showSidebar ? 'calc(75% - 15px)' : '15px', // 调整位置，确保完全可见
+            top: '120px', // 调整到顶部位置，避免被功能栏遮挡
+            width: '50px',
+            height: '50px',
+            borderRadius: '50%',
+            backgroundColor: '#fff',
+            color: '#333',
+            border: '2px solid #4a90e2',
+            boxShadow: '0 4px 12px rgba(74, 144, 226, 0.3)',
+            fontSize: '20px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999, // 大幅提高z-index，确保在最顶层
+            transition: 'left 0.3s ease, background-color 0.2s ease, transform 0.2s ease'
+          }}
+          onMouseEnter={(e) => {e.target.style.backgroundColor = '#f0f7ff'; e.target.style.transform = 'scale(1.05)'}}
+          onMouseLeave={(e) => {e.target.style.backgroundColor = '#fff'; e.target.style.transform = 'scale(1)'}}
+          onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
+          onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
+        >
+          {showSidebar ? '◀' : '▶'}
+        </button>
+        
+        {/* 选中位置信息窗口 */}
+        {selectedLocation && (
+          <div className="location-info-window">
+            <h4>{selectedLocation.title}</h4>
+            <p>第{selectedLocation.day}天 {selectedLocation.time}</p>
+            <p>类型: {selectedLocation.type}</p>
+            <button onClick={() => setSelectedLocation(null)}>关闭</button>
+          </div>
+        )}
+      </div>
+
+      {/* 侧边栏容器 - 用于显示页面内容 */}
+      <div style={{
+        ...sidebarContainerStyle,
+        transform: showSidebar ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s ease'
+      }}>
+        {React.cloneElement(children, {
+          onMapUpdate: (markers, routes) => {
+            console.log('onMapUpdate called in LoggedInLayout with markers:', markers);
+            setMapMarkers(markers);
+            setMapRoutes(routes);
+          },
+          showSidebar: showSidebar
+        })}
+      </div>
+    </div>
+  );
+};
+
 function App() {
-  const { loading } = useAuth()
+  const { loading, user } = useAuth();
+  const navigate = useNavigate();
+
+  // 处理登出
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('登出失败:', error);
+    }
+  };
 
   if (loading) {
-    return <LoadingSpinner message="正在加载应用..." />
+    return <LoadingSpinner message="正在加载应用..." />;
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route 
-        path="/" 
-        element={
-          <ProtectedRoute>
-            <HomePage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/my-plans" 
-        element={
-          <ProtectedRoute>
-            <MyPlansPage />
-          </ProtectedRoute>
-        } 
-      />
-    </Routes>
+    <div className="App">
+      {/* 根据用户登录状态显示不同的头部 */}
+      {!user && (window.location.pathname === '/login' || window.location.pathname === '/register') ? (
+        // 登录注册页面 - 只显示标题
+        <header className="App-header login-header">
+          <h1>AI旅行规划师</h1>
+        </header>
+      ) : (
+        // 登录后页面 - 显示完整导航栏
+        <header className="App-header">
+          <h1>AI旅行规划师</h1>
+          <nav>
+            <Link to="/">首页</Link>
+            <Link to="/my-plans">我的计划</Link>
+            {user && (
+              <div className="user-menu">
+                <span className="user-email">{user.email}</span>
+                <button className="logout-btn" onClick={handleLogout}>退出登录</button>
+              </div>
+            )}
+          </nav>
+        </header>
+      )}
+
+      <Routes>
+        {/* 登录注册页面 - 不显示地图 */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        
+        {/* 登录后的页面 - 显示地图和侧边栏 */}
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <LoggedInLayout>
+                <HomePage />
+              </LoggedInLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/my-plans" 
+          element={
+            <ProtectedRoute>
+              <LoggedInLayout>
+                <MyPlansPage />
+              </LoggedInLayout>
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
+    </div>
   )
 }
 
