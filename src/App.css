@@ -1932,6 +1932,121 @@ button:disabled {
   padding-top: 1.5rem;
 }
 
+/* 用户偏好部分样式 */
+.preferences-section {
+  margin-top: 2rem;
+  border-top: 1px solid #eee;
+  padding-top: 1.5rem;
+}
+
+.preference-form {
+  margin-top: 1rem;
+}
+
+.preferences-list {
+  margin-top: 1rem;
+}
+
+.preferences-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.preference-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  margin-bottom: 0.8rem;
+  border-left: 4px solid #9b59b6;
+  position: relative;
+}
+
+.preference-content {
+  flex: 1;
+  color: #333;
+  font-size: 1rem;
+  word-break: break-word;
+}
+
+.preference-date {
+  color: #7f8c8d;
+  font-size: 0.85rem;
+  margin-right: 1rem;
+}
+
+.delete-btn {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.delete-btn:hover {
+  background-color: #c0392b;
+}
+
+.empty-message {
+  padding: 2rem;
+  text-align: center;
+  color: #7f8c8d;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 2px dashed #ddd;
+}
+
+.char-count {
+  margin-left: 1rem;
+  font-size: 0.8rem;
+  color: #7f8c8d;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* 输入框和按钮在同一行的样式 */
+.inline-actions .detail-item {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.inline-actions label {
+  margin-bottom: 0.5rem;
+}
+
+.input-with-buttons {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-with-buttons input {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  margin-right: 0.8rem;
+}
+
+.inline-buttons {
+  display: flex;
+  gap: 0.8rem;
+  margin-left: auto;
+}
+
+.inline-buttons .save-btn,
+.inline-buttons .cancel-btn {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
 .password-form {
   margin-top: 1rem;
 }

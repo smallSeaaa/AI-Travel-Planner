@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import supabase from '../supabaseClient';
+import { getUserPreferences, addUserPreference, deleteUserPreference } from '../services/userPreferencesService';
 import '../App.css';
 
 const UserProfilePage = () => {
@@ -20,35 +21,41 @@ const UserProfilePage = () => {
   });
   const [passwordError, setPasswordError] = useState(null);
   const [passwordSuccess, setPasswordSuccess] = useState(null);
+  const [userPreferences, setUserPreferences] = useState([]);
+  const [isAddingPreference, setIsAddingPreference] = useState(false);
+  const [newPreference, setNewPreference] = useState('');
+  const [preferenceError, setPreferenceError] = useState(null);
 
-  // 获取用户信息
+  // 获取用户信息和偏好
   useEffect(() => {
-    const fetchUserInfo = async () => {
+    const fetchUserData = async () => {
       if (!user) {
         setLoading(false);
         return;
       }
 
       try {
-        // 这里假设我们可以从Supabase获取更多用户信息
-        // 在实际应用中，可能需要查询用户表
+        // 获取基本用户信息
         const userData = {
           email: user.email,
           id: user.id
-          // 移除了创建时间，不再展示
         };
 
         setUserInfo(userData);
         setEditedInfo(userData);
+
+        // 获取用户偏好
+        const preferences = await getUserPreferences(user.id);
+        setUserPreferences(preferences);
       } catch (err) {
-        console.error('获取用户信息失败:', err);
-        setError('获取用户信息失败');
+        console.error('获取用户数据失败:', err);
+        setError('获取用户数据失败');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserInfo();
+    fetchUserData();
   }, [user]);
 
   // 处理编辑字段变化
@@ -140,6 +147,37 @@ const UserProfilePage = () => {
     } catch (err) {
       console.error('修改密码失败:', err);
       setPasswordError(err.message || '修改密码失败，请重试');
+    }
+  };
+
+  // 处理添加用户偏好
+  const handleAddPreference = async () => {
+    if (!newPreference.trim()) {
+      setPreferenceError('请输入偏好');
+      return;
+    }
+
+    try {
+      const preference = await addUserPreference(user.id, newPreference.trim());
+      setUserPreferences(prev => [preference, ...prev]);
+      setNewPreference('');
+      setIsAddingPreference(false);
+    } catch (err) {
+      console.error('添加偏好失败:', err);
+      setPreferenceError('添加偏好失败，请重试');
+    }
+  };
+
+  // 处理删除用户偏好
+  const handleDeletePreference = async (preferenceId) => {
+    if (window.confirm('确定要删除这个偏好吗？')) {
+      try {
+        await deleteUserPreference(preferenceId);
+        setUserPreferences(prev => prev.filter(p => p.id !== preferenceId));
+      } catch (err) {
+        console.error('删除偏好失败:', err);
+        setError('删除偏好失败，请重试');
+      }
     }
   };
 
@@ -295,6 +333,89 @@ const UserProfilePage = () => {
         ) : null}
       </div>
 
+      {/* 用户偏好部分 */}
+      <div className="preferences-section">
+        <div className="profile-header">
+          <h3>用户偏好</h3>
+          {!isAddingPreference && (
+            <button 
+              className="edit-btn"
+              onClick={() => setIsAddingPreference(true)}
+            >
+              添加偏好
+            </button>
+          )}
+        </div>
+
+        {isAddingPreference ? (
+          <div className="preference-form">
+            {preferenceError && (
+              <div className="error-message">
+                {preferenceError}
+                <button onClick={() => setPreferenceError(null)}>关闭</button>
+              </div>
+            )}
+
+            <div className="detail-item inline-actions">
+              <label>偏好:</label>
+              <div className="input-with-buttons">
+                <input 
+                  type="text" 
+                  value={newPreference} 
+                  onChange={(e) => setNewPreference(e.target.value)}
+                  placeholder="请输入您的偏好"
+                  maxLength={20}
+                />
+                <div className="inline-buttons">
+                  <button 
+                    className="save-btn"
+                    onClick={handleAddPreference}
+                  >
+                    添加
+                  </button>
+                  <button 
+                    className="cancel-btn"
+                    onClick={() => {
+                      setIsAddingPreference(false);
+                      setNewPreference('');
+                      setPreferenceError(null);
+                    }}
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="preferences-list">
+            {userPreferences.length === 0 ? (
+              <div className="empty-message">
+                暂无偏好信息，点击"添加偏好"开始添加
+              </div>
+            ) : (
+              <ul>
+                {userPreferences.map((preference) => (
+                  <li key={preference.id} className="preference-item">
+                    <span className="preference-content">{preference.preference}</span>
+                    <span className="preference-date">
+                      {new Date(preference.created_at).toLocaleDateString()}
+                    </span>
+                    <button 
+                      className="delete-btn"
+                      onClick={() => handleDeletePreference(preference.id)}
+                      title="删除偏好"
+                    >
+                      删除
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="account-actions">
         <div className="profile-header">
           <h3>账户操作</h3>
@@ -310,8 +431,6 @@ const UserProfilePage = () => {
             <p>提示：请妥善保管您的账户信息，定期更新密码以保障账户安全。</p>
           </div>
       </div>
-
-      
     </div>
   );
 };

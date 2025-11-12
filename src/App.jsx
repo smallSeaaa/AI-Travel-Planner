@@ -157,8 +157,8 @@ const HomePage = ({ onMapUpdate, showSidebar }) => {
       // 调用大语言模型API生成旅行计划
       console.log('提交的旅行需求:', tripDetails)
       
-      // 调用LLM服务生成行程计划
-      const plan = await generateTravelPlan(tripDetails)
+      // 调用LLM服务生成行程计划，传递用户ID以获取用户偏好
+      const plan = await generateTravelPlan(tripDetails, user?.id || null)
       
       // 打印原始计划数据，帮助调试
       console.log('大模型原始返回结果:', plan)

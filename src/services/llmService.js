@@ -1,15 +1,37 @@
 // 大语言模型服务封装
+import { getUserPreferences } from './userPreferencesService';
 
 /**
  * 调用大语言模型API生成旅行计划
  * @param {Object} tripDetails - 旅行详情
  * @returns {Promise<Object>} - 生成的旅行计划
  */
-export const generateTravelPlan = async (tripDetails) => {
+export const generateTravelPlan = async (tripDetails, userId = null) => {
   try {
     console.log('开始生成旅行计划...');
+    
+    let userPreferences = [];
+    if (userId) {
+      try {
+        const preferences = await getUserPreferences(userId);
+        userPreferences = preferences.map(pref => pref.preference).filter(Boolean);
+        console.log('用户偏好:', userPreferences);
+      } catch (error) {
+        console.error('获取用户偏好时出错，但继续生成旅行计划:', error.message);
+      }
+    }
+    
+    // 构建用户偏好文本
+    let userPreferencesText = "";
+    if (userPreferences && userPreferences.length > 0) {
+      userPreferencesText = `用户的旅行偏好：
+      ${userPreferences.map(pref => `- ${pref}`).join('\n')}
+      请在生成旅行计划时充分考虑这些偏好，确保行程安排和推荐内容符合用户的喜好。
+      `;
+    }
+    
     // 构建发送给LLM的提示词
-    const prompt = buildTravelPrompt(tripDetails);
+    const prompt = buildTravelPrompt(tripDetails, userPreferencesText);
     console.log('生成的提示词:', prompt);
     
     // 这里使用示例API，实际项目中需要替换为真实的API端点
@@ -34,11 +56,13 @@ export const generateTravelPlan = async (tripDetails) => {
  * @param {string} tripDetails - 用户输入的旅行需求文本
  * @returns {string} - 格式化的提示词
  */
-const buildTravelPrompt = (tripDetails) => {
+
+const buildTravelPrompt = (tripDetails, userPreferencesText = "") => {
   // 直接使用用户输入的原始文本作为旅行需求
   return `请根据以下旅行需求，生成一个详细的旅行计划：
 
 ${tripDetails}
+${userPreferencesText}
 
 请提供以下内容：
 1. 住宿建议：推荐适合的酒店或民宿
@@ -86,6 +110,7 @@ JSON结构如下：
 3. 如果用户没有指定旅行天数，默认为3天
 4. 如果用户没有指定预算，请根据旅行天数和人数，合理估算一个预算值
 5. 请为每个活动都估算一个合理的费用预算，并在活动对象的budget字段中提供
+6. 请结合用户的旅行偏好，在生成的计划中考虑到这些偏好
 `;
 };
 
