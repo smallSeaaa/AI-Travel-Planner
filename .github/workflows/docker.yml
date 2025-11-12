@@ -39,10 +39,19 @@ jobs:
           IMAGE=${{ secrets.ALIYUN_REGISTRY }}/smallseaaa/ai-travel-planner:latest
           docker save $IMAGE -o ai-travel-planner-latest.tar
 
-      # 6. 上传 tar 文件到 GitHub Release
+      # 6. 生成 tag
+      - name: Generate tag
+        id: tag
+        run: |
+          # 用当前日期时间作为 tag
+          TAG="v$(date +'%Y%m%d%H%M%S')"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      # 7. 上传 tar 文件到 GitHub Release
       - name: Upload Docker image tar to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
           files: ai-travel-planner-latest.tar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
