@@ -6,12 +6,12 @@ let supabaseUrl = (window && window.env && window.env.VITE_SUPABASE_URL) || impo
 let supabaseAnonKey = (window && window.env && window.env.VITE_SUPABASE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // 提供更友好的错误处理，不再使用无效的占位符URL
-if (!supabaseUrl || supabaseUrl === 'https://default-url.supabase.co') {
+if (!supabaseUrl) {
   console.error('错误: Supabase URL未正确配置，请确保环境变量VITE_SUPABASE_URL已设置')
   throw new Error('Supabase URL未正确配置')
 }
 
-if (!supabaseAnonKey || supabaseAnonKey === 'default-anon-key') {
+if (!supabaseAnonKey) {
   console.error('错误: Supabase Anon Key未正确配置，请确保环境变量VITE_SUPABASE_ANON_KEY已设置')
   throw new Error('Supabase Anon Key未正确配置')
 }
