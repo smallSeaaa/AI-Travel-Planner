@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import supabase from '../supabaseClient'
 import LoadingSpinner from '../components/LoadingSpinner'
 import SimpleMapComponent from '../components/MapComponent'
+import travelPlanService from '../services/travelPlanService'
 
 // 安全的JSON解析函数
 const safeParse = (data) => {
@@ -209,6 +210,7 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
     
     setEditForm({
       id: plan.id,
+      plan_name: plan.plan_name || '',
       destination: plan.destination,
       duration: plan.duration,
       travelers: plan.travelers,
@@ -219,6 +221,24 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
       tips: tips
     })
     setIsEditing(true)
+    // 让侧面栏滚动到顶部
+    setTimeout(() => {
+      // 尝试直接滚动到编辑表单的标题元素
+      const editTitleElement = document.querySelector('.plan-edit-form h2');
+      if (editTitleElement) {
+        console.log('找到编辑标题元素:', editTitleElement);
+        editTitleElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        // 如果找不到标题，尝试滚动到编辑表单容器
+        const editFormElement = document.querySelector('.plan-edit-form');
+        if (editFormElement) {
+          console.log('找到编辑表单容器:', editFormElement);
+          editFormElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          console.log('未找到滚动目标元素');
+        }
+      }
+    }, 200) // 增加超时时间以确保编辑表单已完全渲染
   }
 
   // 处理表单输入变化
@@ -246,7 +266,7 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
       daily_plans: [...(prev.daily_plans || []), {
         day: newDay,
         date: '', // 保留字段但不显示具体日期
-        activities: [{ time: '09:00', type: '景点', description: '' }]
+        activities: [{ time: '09:00', type: '景点', description: '', budget: '' }]
       }]
     }))
   }
@@ -285,7 +305,8 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
         description: '',
         coordinates: null,
         address: '',
-        locationSearch: ''
+        locationSearch: '',
+        budget: ''
       };
       updatedPlans[dayIndex].activities.unshift(newActivity);
       
@@ -550,9 +571,14 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
   
     try {
       // 处理数据类型转换
-      const durationValue = Number(editForm.duration) || 0
-      const travelersValue = Number(editForm.travelers) || 0
-      const budgetValue = Number(editForm.budget) || 0
+      // 保留原始值的逻辑：只有当editForm中的字段有实际内容时才使用转换后的值
+      // 否则使用activePlan中的原始值（如果存在）
+      const durationValue = editForm.duration !== undefined && editForm.duration !== null && editForm.duration !== '' ? 
+        (Number(editForm.duration) || 0) : (activePlan?.duration || 0);
+      const travelersValue = editForm.travelers !== undefined && editForm.travelers !== null && editForm.travelers !== '' ? 
+        (Number(editForm.travelers) || 0) : (activePlan?.travelers || 0);
+      const budgetValue = editForm.budget !== undefined && editForm.budget !== null && editForm.budget !== '' ? 
+        (Number(editForm.budget) || 0) : (activePlan?.budget || 0);
       
       // 对每天的活动按时间排序
       const sortedDailyPlans = editForm.daily_plans.map(dayPlan => ({
@@ -563,43 +589,44 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
         }) : []
       }));
 
-      // 更新计划到数据库
-      const { data, error } = await supabase
-        .from('travel_plans')
-        .update({
-          destination: editForm.destination,
-          duration: durationValue,
-          travelers: travelersValue,
-          budget: budgetValue,
-          accommodation: typeof editForm.accommodation === 'string' ? editForm.accommodation : JSON.stringify(editForm.accommodation),
-          transportation: typeof editForm.transportation === 'string' ? editForm.transportation : JSON.stringify(editForm.transportation),
-          daily_plans: JSON.stringify(sortedDailyPlans), // 转换为JSON字符串存储
-          tips: JSON.stringify(editForm.tips), // 转换为JSON字符串存储
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editForm.id)
-        .eq('user_id', user.id)
-        .select()
+      // 构建更新的计划对象
+      const updatedPlan = {
+        plan_name: editForm.plan_name,
+        destination: editForm.destination,
+        duration: durationValue,
+        travelers: travelersValue,
+        budget: budgetValue,
+        accommodation: editForm.accommodation,
+        transportation: editForm.transportation,
+        dailyPlans: sortedDailyPlans,
+        tips: editForm.tips,
+        original_request: activePlan?.original_request
+      };
+
+      // 使用travelPlanService更新计划，自动处理名称唯一性
+      const result = await travelPlanService.updateTravelPlan(editForm.id, user.id, updatedPlan);
       
-      if (error) {
-        throw new Error(`更新失败: ${error.message}`)
+      if (!result.success) {
+        throw new Error(`更新失败: ${result.error}`);
       }
+      
+      const updatedPlanData = result.data;
       
       // 更新本地状态
       setPlans(plans.map(plan => 
         plan.id === editForm.id 
           ? {
               ...plan,
-              destination: editForm.destination,
-              duration: durationValue,
-              travelers: travelersValue,
-              budget: budgetValue,
-              accommodation: typeof editForm.accommodation === 'string' ? editForm.accommodation : JSON.stringify(editForm.accommodation),
-              transportation: typeof editForm.transportation === 'string' ? editForm.transportation : JSON.stringify(editForm.transportation),
-              daily_plans: sortedDailyPlans,
-              tips: safeParse(editForm.tips),
-              updated_at: new Date().toISOString()
-              // 保留原来的original_request
+              plan_name: updatedPlanData.plan_name, // 使用处理后的唯一名称
+              destination: updatedPlanData.destination,
+              duration: updatedPlanData.duration,
+              travelers: updatedPlanData.travelers,
+              budget: updatedPlanData.budget,
+              accommodation: safeParse(updatedPlanData.accommodation),
+              transportation: safeParse(updatedPlanData.transportation),
+              daily_plans: safeParse(updatedPlanData.daily_plans),
+              tips: safeParse(updatedPlanData.tips),
+              updated_at: updatedPlanData.updated_at
             }
           : plan
       ))
@@ -608,16 +635,16 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
       if (activePlan && activePlan.id === editForm.id) {
         setActivePlan({
           ...activePlan,
-          destination: editForm.destination,
-          duration: durationValue,
-          travelers: travelersValue,
-          budget: budgetValue,
-          accommodation: typeof editForm.accommodation === 'string' ? editForm.accommodation : JSON.stringify(editForm.accommodation),
-          transportation: typeof editForm.transportation === 'string' ? editForm.transportation : JSON.stringify(editForm.transportation),
-            daily_plans: sortedDailyPlans,
-            tips: safeParse(editForm.tips),
-          updated_at: new Date().toISOString()
-          // 保留原来的original_request
+          plan_name: updatedPlanData.plan_name, // 使用处理后的唯一名称
+          destination: updatedPlanData.destination,
+          duration: updatedPlanData.duration,
+          travelers: updatedPlanData.travelers,
+          budget: updatedPlanData.budget,
+          accommodation: safeParse(updatedPlanData.accommodation),
+          transportation: safeParse(updatedPlanData.transportation),
+          daily_plans: safeParse(updatedPlanData.daily_plans),
+          tips: safeParse(updatedPlanData.tips),
+          updated_at: updatedPlanData.updated_at
         })
       }
       
@@ -686,27 +713,29 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
           <div className="plan-details-view">
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
               <button className="back-btn" onClick={handleBackToList}>← 返回列表</button>
-              <div>
-                {isRouteSelectionMode && (
-                  <button 
-                    className="plan-route-btn" 
-                    onClick={handlePlanRoute}
-                    disabled={selectedActivities.length !== 2}
-                    style={{ marginRight: '10px' }}
-                  >
-                    规划路线
-                  </button>
-                )}
-                <button className="nav-route-btn" onClick={() => {
-                                  setIsRouteSelectionMode(!isRouteSelectionMode);
-                                  // 如果关闭选择模式，清空已选择的活动
-                                  if (isRouteSelectionMode) {
-                                    setSelectedActivities([]);
-                                  }
-                                }}>
+              {!isEditing && (
+                <div>
+                  {isRouteSelectionMode && (
+                    <button 
+                      className="plan-route-btn" 
+                      onClick={handlePlanRoute}
+                      disabled={selectedActivities.length !== 2}
+                      style={{ marginRight: '10px' }}
+                    >
+                      规划路线
+                    </button>
+                  )}
+                  <button className="nav-route-btn" onClick={() => {
+                                    setIsRouteSelectionMode(!isRouteSelectionMode);
+                                    // 如果关闭选择模式，清空已选择的活动
+                                    if (isRouteSelectionMode) {
+                                      setSelectedActivities([]);
+                                    }
+                                  }}>
                                   {isRouteSelectionMode ? '取消导航' : '导航路线'}
                                 </button>
-              </div>
+                </div>
+              )}
             </div>
             
             {updateSuccess && (
@@ -718,7 +747,19 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
             {isEditing && activePlan.id === editForm.id ? (
               // 编辑模式 - 显示表单
               <div className="plan-edit-form">
-                <h2>编辑旅行计划</h2>
+                <h2>编辑 {activePlan.plan_name || '旅行计划'}</h2>
+                
+                <div className="form-group">
+                  <label htmlFor="plan_name">计划名称</label>
+                  <input
+                    type="text"
+                    id="plan_name"
+                    name="plan_name"
+                    value={editForm.plan_name || ''}
+                    onChange={handleInputChange}
+                    placeholder="请输入计划名称"
+                  />
+                </div>
                 
                 <div className="form-group">
                   <label htmlFor="destination">目的地</label>
@@ -744,7 +785,7 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="travelers">同行人数</label>
+                    <label htmlFor="travelers">人数</label>
                     <input
                       type="number"
                       id="travelers"
@@ -854,6 +895,15 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
                                 rows="2"
                                 placeholder="描述这个活动"
                               />
+                              <div className="form-group small">
+                                <label>预算</label>
+                                <input
+                                  type="text"
+                                  value={activity.budget || ''}
+                                  onChange={(e) => updateActivity(dayIndex, activityIndex, 'budget', e.target.value)}
+                                  placeholder="如：50元"
+                                />
+                              </div>
                             </div>
                             
                             {/* 坐标设置功能 */}
@@ -945,7 +995,7 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
                 {!isRouteSelectionMode && (
                   <>
                     <div className="plan-header">
-                      <h2>{activePlan.destination}</h2>
+                      <h2>{activePlan.plan_name || '旅行计划'}</h2>
                       <div className="plan-meta">
                         <span>创建时间: {new Date(activePlan.created_at).toLocaleString()}</span>
                         {activePlan.updated_at && activePlan.updated_at !== activePlan.created_at && (
@@ -957,8 +1007,9 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
                     <div className="plan-overview">
                       <div className="plan-summary">
                         <div className="plan-details">
+                          <span>目的地：{activePlan.destination}</span>
                           <span>行程天数：{activePlan.duration}</span>
-                          <span>同行人数：{activePlan.travelers}人</span>
+                          <span>人数：{activePlan.travelers}人</span>
                           <span>预算：{activePlan.budget}</span>
                         </div>
                       </div>
@@ -1011,6 +1062,7 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
                               <div className="activity-content">
                                 <span className={`activity-type ${activity.type}`}>{activity.type}</span>
                                 <p className="activity-description">{activity.description}</p>
+                                {activity.budget && <span className="activity-budget">💰 {activity.budget}</span>}
                                 {activity.coordinates && (
                                   <div className="location-info">
                                     <span className="address-text">{activity.address || '已设置坐标'}</span>
@@ -1098,8 +1150,9 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
               <div className="plans-grid">
                 {plans.map((plan) => (
                   <div key={plan.id} className="plan-card">
-                    <h3>{plan.destination}</h3>
+                    <h3>{plan.plan_name || `旅行计划`}</h3>
                     <div className="plan-card-details">
+                      <span>{plan.destination}</span>
                       <span>{plan.duration}天</span>
                       <span>{plan.travelers}人</span>
                       <span>{plan.budget}</span>

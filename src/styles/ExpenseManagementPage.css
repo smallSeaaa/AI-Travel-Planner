@@ -1,0 +1,306 @@
+/* 费用管理页面样式 */
+.expense-management-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+.expense-management-container h1 {
+  color: #2c3e50;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.expense-content {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 旅行计划选择 */
+.plan-selection {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.plan-selection h2 {
+  color: #34495e;
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+}
+
+.plan-select {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  transition: border-color 0.3s;
+}
+
+.plan-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* 费用记录表单 */
+.expense-form {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.expense-form h2 {
+  color: #34495e;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.input-with-button {
+  display: flex;
+  gap: 10px;
+}
+
+.input-with-button input {
+  flex: 1;
+  padding: 12px 15px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  transition: border-color 0.3s;
+}
+
+.input-with-button input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.voice-button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: #9b59b6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-button:hover:not(:disabled) {
+  background: #8e44ad;
+  transform: scale(1.05);
+}
+
+.voice-button:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.voice-button.recording {
+  background: #e74c3c;
+  animation: pulse 1.5s infinite, recordFlash 1s infinite alternate;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
+}
+
+@keyframes recordFlash {
+  0% {
+    background-color: #e74c3c;
+  }
+  100% {
+    background-color: #c0392b;
+  }
+}
+
+.save-button {
+  padding: 12px 30px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.save-button:hover:not(:disabled) {
+  background: #229954;
+}
+
+.save-button:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+/* 费用记录列表 */
+.expenses-list {
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.expenses-list h2 {
+  color: #34495e;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+.expenses-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.expenses-list th,
+.expenses-list td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.expenses-list th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.expenses-list tr:hover {
+  background: #f8f9fa;
+}
+
+/* 消息提示 */
+.error-message {
+  background: #fee;
+  color: #c33;
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border-left: 4px solid #c33;
+}
+
+.success-message {
+  background: #efe;
+  color: #3c3;
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border-left: 4px solid #3c3;
+}
+
+/* 计划详情展示样式 */
+.plan-details {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid #3498db;
+}
+
+.plan-details h3 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.plan-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+  font-size: 14px;
+}
+
+.info-label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.info-value {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .expense-management-container {
+    padding: 10px;
+  }
+  
+  .expense-content {
+    padding: 20px;
+  }
+  
+  .input-with-button {
+    flex-direction: column;
+  }
+  
+  .voice-button {
+    width: 100%;
+  }
+  
+  .expenses-list th,
+  .expenses-list td {
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  
+  .plan-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .info-item {
+    padding: 8px;
+  }
+}

@@ -61,12 +61,12 @@ JSON结构如下：
   "dailyPlans": [
     {
       "day": 1,
-      "date": "", // 不要填写具体日期
       "activities": [
         {
           "time": "09:00",
           "type": "活动类型（如：早餐、景点、午餐等）",
-          "description": "活动描述"
+          "description": "活动描述",
+          "budget": "X元"
         }
         // 更多活动...
       ]
@@ -82,9 +82,10 @@ JSON结构如下：
 请根据用户提供的信息，合理推断旅行天数、人数、预算等信息并填入JSON中。
 注意：
 1. 不要在生成的计划中包含任何具体日期信息！
-2. date字段请保持为空字符串
-3. 在行程安排的文本描述中也不要提及具体日期，只使用"第X天"来表示
-4. 如果用户没有指定旅行天数，默认为3天
+2. 在行程安排的文本描述中也不要提及具体日期，只使用"第X天"来表示
+3. 如果用户没有指定旅行天数，默认为3天
+4. 如果用户没有指定预算，请根据旅行天数和人数，合理估算一个预算值
+5. 请为每个活动都估算一个合理的费用预算，并在活动对象的budget字段中提供
 `;
 };
 
@@ -170,12 +171,115 @@ const callZhiPuAI = async (prompt, apiKey, apiBaseUrl) => {
 };
 
 /**
+ * 根据活动类型和描述估算单个活动的预算
+ * @param {Object} activity - 活动对象
+ * @returns {string} - 估算的预算金额（元）
+ */
+const estimateActivityBudget = (activity) => {
+  if (!activity) return '0元';
+  
+  const type = activity.type || '';
+  const description = activity.description || '';
+  let baseBudget = 0;
+  
+  // 根据活动类型设置基础预算
+  switch (true) {
+    case type.includes('早餐'):
+      baseBudget = 30;
+      break;
+    case type.includes('午餐'):
+      baseBudget = 100;
+      break;
+    case type.includes('晚餐'):
+      baseBudget = 150;
+      break;
+    case type.includes('景点'):
+      if (description.includes('公园') || description.includes('广场') || description.includes('免费')) {
+        baseBudget = 0;
+      } else if (description.includes('博物馆') || description.includes('纪念馆')) {
+        baseBudget = 60;
+      } else if (description.includes('主题公园') || description.includes('乐园') || description.includes('景区')) {
+        baseBudget = 180;
+      } else {
+        baseBudget = 100;
+      }
+      break;
+    case type.includes('购物'):
+      baseBudget = 500; // 购物预算较为主观，设置一个中等值
+      break;
+    case type.includes('交通'):
+      baseBudget = 30;
+      break;
+    case type.includes('住宿'):
+      if (description.includes('五星级') || description.includes('豪华')) {
+        baseBudget = 1500;
+      } else if (description.includes('四星级')) {
+        baseBudget = 800;
+      } else if (description.includes('三星级')) {
+        baseBudget = 400;
+      } else if (description.includes('民宿') || description.includes('经济型')) {
+        baseBudget = 200;
+      } else {
+        baseBudget = 300;
+      }
+      break;
+    default:
+      baseBudget = 50;
+  }
+  
+  // 根据描述中的关键词调整预算
+  if (description.includes('高档') || description.includes('豪华') || description.includes('VIP')) {
+    baseBudget = Math.floor(baseBudget * 1.5);
+  } else if (description.includes('经济型') || description.includes('平价')) {
+    baseBudget = Math.floor(baseBudget * 0.8);
+  }
+  
+  return `${baseBudget}元`;
+};
+
+/**
+ * 为旅行计划中的所有活动添加预算信息
+ * @param {Object} plan - 旅行计划对象
+ * @returns {Object} - 添加了活动预算的旅行计划对象
+ */
+const addActivityBudgets = (plan) => {
+  if (!plan || !plan.dailyPlans || !Array.isArray(plan.dailyPlans)) {
+    return plan;
+  }
+  
+  // 为每个活动添加预算（如果没有的话）
+  plan.dailyPlans = plan.dailyPlans.map(day => {
+    if (!day || !day.activities || !Array.isArray(day.activities)) {
+      return day;
+    }
+    
+    day.activities = day.activities.map(activity => {
+      if (!activity) return activity;
+      
+      // 如果活动没有预算信息，进行估算
+      if (!activity.budget || activity.budget === '' || activity.budget === '0元' || activity.budget === '未知') {
+        activity.budget = estimateActivityBudget(activity);
+        console.log(`为活动添加估算预算: ${activity.description} - ${activity.budget}`);
+      }
+      
+      return activity;
+    });
+    
+    return day;
+  });
+  
+  return plan;
+};
+
+/**
  * 解析LLM响应为旅行计划对象
  */
 const parseLLMResponse = (response) => {
   try {
     // 尝试直接解析JSON
-    return JSON.parse(response);
+    let plan = JSON.parse(response);
+    // 添加活动预算信息
+    return addActivityBudgets(plan);
   } catch (error) {
     console.error('解析LLM响应失败，尝试提取JSON部分:', error);
     
@@ -184,16 +288,18 @@ const parseLLMResponse = (response) => {
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
-        return JSON.parse(jsonMatch[0]);
+        let plan = JSON.parse(jsonMatch[0]);
+        // 添加活动预算信息
+        return addActivityBudgets(plan);
       } catch (innerError) {
         console.error('提取后解析JSON仍失败:', innerError);
         // 如果解析失败，返回基本结构的模拟数据
-        return getFallbackTravelPlan(response);
+        return addActivityBudgets(getFallbackTravelPlan(response));
       }
     }
     
     // 如果无法提取JSON，返回回退数据
-    return getFallbackTravelPlan(response);
+    return addActivityBudgets(getFallbackTravelPlan(response));
   }
 };
 
@@ -227,32 +333,38 @@ const getMockLLMResponse = (prompt) => {
             {
               time: '09:00',
               type: '早餐',
-              description: `${destination}特色早餐，品尝当地美食`
+              description: `${destination}特色早餐，品尝当地美食`,
+              budget: '50元'
             },
             {
               time: '10:00',
               type: '景点',
-              description: preferences.includes('动漫') ? `${destination}动漫主题公园` : `${destination}主要景点游览`
+              description: preferences.includes('动漫') ? `${destination}动漫主题公园` : `${destination}主要景点游览`,
+              budget: '120元'
             },
             {
               time: '12:30',
               type: '午餐',
-              description: `${destination}当地特色餐厅，品尝正宗美食`
+              description: `${destination}当地特色餐厅，品尝正宗美食`,
+              budget: '180元'
             },
             {
               time: '14:00',
               type: '景点',
-              description: i % 2 === 0 ? `${destination}历史文化景点` : `${destination}自然风光`
+              description: i % 2 === 0 ? `${destination}历史文化景点` : `${destination}自然风光`,
+              budget: '100元'
             },
             {
               time: '17:30',
               type: '晚餐',
-              description: `${destination}人气餐厅，体验地道风味`
+              description: `${destination}人气餐厅，体验地道风味`,
+              budget: '200元'
             },
             {
               time: '19:30',
               type: '活动',
-              description: preferences.includes('购物') ? `${destination}购物区` : `${destination}夜景游览`
+              description: preferences.includes('购物') ? `${destination}购物区` : `${destination}夜景游览`,
+              budget: '50元'
             }
           ]
         });
@@ -304,12 +416,14 @@ const getFallbackTravelPlan = (response) => {
           {
             time: '09:00',
             type: '早餐',
-            description: '酒店早餐'
+            description: '酒店早餐',
+            budget: '0元'
           },
           {
             time: '10:00',
             type: '景点',
-            description: '主要景点游览'
+            description: '主要景点游览',
+            budget: '100元'
           }
         ]
       }

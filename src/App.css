@@ -173,22 +173,17 @@ nav a:hover {
 
 /* 侧边栏切换按钮 */
 .sidebar-toggle {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%) translateX(-50%);
-  background-color: white;
+  z-index: 9999;
+  position: fixed;
+  left: 320px;
+  top: 20px;
+  font-size: 20px;
+  background: white;
   border: 1px solid #ddd;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 5px;
+  padding: 8px;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  z-index: 20;
-  font-size: 1.2rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   transition: all 0.3s ease;
 }
 
@@ -200,7 +195,7 @@ nav a:hover {
 /* 侧边栏按钮样式 */
 .sidebar-toggle-button {
   position: fixed;
-  left: 75%;
+  left: 320px;
   top: 80px;
   width: 50px;
   height: 50px;
@@ -684,6 +679,17 @@ nav a:hover {
   padding: 1rem;
   border-radius: 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.activity-budget {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: inline-block;
+  margin-top: 0.3rem;
 }
 
 .activity-time {
@@ -1467,12 +1473,6 @@ nav a:hover {
 .activity-description {
   color: #34495e;
   font-size: 0.95rem;
-  margin: 0;
-}
-
-/* 旅行小贴士 */
-.travel-tips {
-  margin-bottom: 2rem;
 }
 
 .travel-tips h3 {
@@ -1486,7 +1486,6 @@ nav a:hover {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  padding: 0;
 }
 
 .travel-tips li {
@@ -1495,7 +1494,6 @@ nav a:hover {
   border-radius: 4px;
   position: relative;
   font-size: 0.95rem;
-  color: #34495e;
 }
 
 .travel-tips li::before {
@@ -1725,13 +1723,6 @@ button:disabled {
     height: 40vh;
   }
 
-  .sidebar-toggle {
-    left: 50%;
-    top: auto;
-    bottom: 0;
-    transform: translate(-50%, 50%);
-  }
-
   .location-info-window {
     bottom: 10px;
     left: 10px;
@@ -1770,4 +1761,305 @@ button:disabled {
 /* 隐藏原本的features-section */
 .features-section {
   display: none;
+}
+
+/* 用户信息管理页面样式 */
+.no-map-container {
+  margin-top: 60px; /* 导航栏高度 */
+  min-height: calc(100vh - 60px);
+  background-color: #f5f5f5;
+  padding: 2rem;
+}
+
+.user-profile-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+.user-profile-container h2 {
+  color: #2c3e50;
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 0.5rem;
+}
+
+.profile-info {
+  margin-bottom: 2rem;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.profile-header h3 {
+  color: #34495e;
+  font-size: 1.3rem;
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  padding: 0.8rem;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #3498db;
+}
+
+.detail-item label {
+  font-weight: 600;
+  color: #555;
+  min-width: 100px;
+  margin-right: 1rem;
+}
+
+.detail-item span {
+  color: #333;
+  flex: 1;
+}
+
+.detail-item input {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.detail-item input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+.edit-btn, .save-btn, .cancel-btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.edit-btn {
+  background-color: #3498db;
+  color: white;
+}
+
+.edit-btn:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+}
+
+.save-btn {
+  background-color: #27ae60;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #229954;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(39, 174, 96, 0.3);
+}
+
+.cancel-btn {
+  background-color: #7f8c8d;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #708090;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(127, 140, 141, 0.3);
+}
+
+.account-actions {
+  border-top: 1px solid #eee;
+  padding-top: 1.5rem;
+}
+
+.account-actions .profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.account-actions h3 {
+  color: #34495e;
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.account-tips {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #e8f4f8;
+  border-left: 4px solid #3498db;
+  border-radius: 4px;
+}
+
+.account-tips p {
+  color: #2980b9;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* 密码部分样式 */
+.password-section {
+  margin-top: 2rem;
+  border-top: 1px solid #eee;
+  padding-top: 1.5rem;
+}
+
+.password-form {
+  margin-top: 1rem;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-message button {
+  background-color: #c62828;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* 成功消息样式 */
+.success-message {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.success-message button {
+  background-color: #2e7d32;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* 退出登录按钮样式 - 与编辑/取消按钮保持相同样式，但使用红色 */
+.user-profile-container .logout-btn {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.user-profile-container .logout-btn:hover {
+  background-color: #c0392b;
+}
+
+.loading-container, .error-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: #555;
+  font-size: 1.1rem;
+}
+
+/* 导航栏用户信息管理链接样式 */
+.user-profile-link {
+  color: #34495e;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.user-profile-link:hover {
+  background-color: #3498db;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .no-map-container {
+    padding: 1rem;
+  }
+  
+  .user-profile-container {
+    padding: 1.5rem;
+  }
+  
+  .user-profile-container h2 {
+    font-size: 1.5rem;
+  }
+  
+  .profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .detail-item label {
+    min-width: auto;
+    margin-right: 0;
+  }
+  
+  .edit-actions {
+    flex-direction: column;
+  }
+  
+  .edit-btn, .save-btn, .cancel-btn {
+    width: 100%;
+  }
 }

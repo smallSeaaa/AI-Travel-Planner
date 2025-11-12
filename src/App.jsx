@@ -4,6 +4,8 @@ import { useAuth } from './contexts/AuthContext'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import MyPlansPage from './pages/MyPlansPage'
+import UserProfilePage from './pages/UserProfilePage'
+import ExpenseManagementPage from './pages/ExpenseManagementPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoadingSpinner from './components/LoadingSpinner'
 import MapComponent from './components/MapComponent'
@@ -198,6 +200,47 @@ const HomePage = ({ onMapUpdate, showSidebar }) => {
     return false;
   };
   
+  // 检查计划名称是否重复并生成唯一名称
+  const generateUniquePlanName = async (baseName) => {
+    try {
+      // 查询当前用户的所有计划名称
+      const { data, error } = await supabase
+        .from('travel_plans')
+        .select('plan_name')
+        .eq('user_id', user.id);
+      
+      if (error) {
+        console.error('查询计划名称失败:', error);
+        return baseName; // 出错时返回原始名称
+      }
+      
+      const existingNames = data.map(plan => plan.plan_name).filter(Boolean);
+      
+      // 检查基础名称是否已存在
+      if (!existingNames.includes(baseName)) {
+        return baseName;
+      }
+      
+      // 查找已有的编号并确定下一个编号
+      let maxNumber = 0;
+      const namePattern = new RegExp(`^${baseName}\((\d+)\)$`);
+      
+      existingNames.forEach(name => {
+        const match = name.match(namePattern);
+        if (match) {
+          const number = parseInt(match[1], 10);
+          maxNumber = Math.max(maxNumber, number);
+        }
+      });
+      
+      // 返回带编号的名称
+      return `${baseName}(${maxNumber + 1})`;
+    } catch (error) {
+      console.error('生成唯一计划名称失败:', error);
+      return baseName;
+    }
+  };
+
   // 保存旅行计划
   const handleSavePlan = async () => {
     if (!user) {
@@ -235,10 +278,17 @@ const HomePage = ({ onMapUpdate, showSidebar }) => {
         ? parseFloat(generatedPlan.budget.replace(/[^\d.]/g, ''))
         : Number(generatedPlan.budget) || 0;
       
+      // 生成基础计划名称
+      const basePlanName = `${generatedPlan.destination || '未知'}旅行-${new Date().toLocaleDateString('zh-CN')}`;
+      
+      // 生成唯一的计划名称
+      const uniquePlanName = await generateUniquePlanName(basePlanName);
+      
       // 使用auth.uid()让Supabase自动获取当前认证用户ID，符合RLS策略要求
       // 不手动设置user_id，让Supabase自动填充，这样能更好地符合RLS策略
       const { data, error } = await supabase.from('travel_plans').insert({
         // 移除手动设置的user_id，让Supabase自动填充
+        plan_name: uniquePlanName,
         destination: generatedPlan.destination || '未知',
         duration: durationValue,
         travelers: travelersValue,
@@ -284,7 +334,7 @@ const HomePage = ({ onMapUpdate, showSidebar }) => {
                   name="tripDetails"
                   value={tripDetails}
                   onChange={handleInputChange}
-                  placeholder="例如：我想去日本，5天，预算1万元，喜欢美食和动漫，带孩子"
+                  placeholder="例如：我想去北京，5天，预算1万元，喜欢美食，带孩子"
                   rows="4"
                   style={{ flex: 1, padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
                 />
@@ -319,7 +369,7 @@ const HomePage = ({ onMapUpdate, showSidebar }) => {
             {isRecording && (
               <div className="recording-indicator">
                 <div className="recording-dot"></div>
-                <span>正在录音，请说出您的旅行需求，包括旅行目的地、日期、预算、同行人数、旅行偏好等</span>
+                <span>正在录音，请说出您的旅行需求，包括旅行目的地、日期、预算、人数、旅行偏好等</span>
               </div>
             )}
             <button 
@@ -339,7 +389,7 @@ const HomePage = ({ onMapUpdate, showSidebar }) => {
               <h3>{generatedPlan?.destination || '未知目的地'}</h3>
               <div className="plan-details">
                 <span>行程天数：{generatedPlan?.duration || '0'}</span>
-                <span>同行人数：{generatedPlan?.travelers || '1'}人</span>
+                <span>人数：{generatedPlan?.travelers || '1'}人</span>
                 <span>预算：{generatedPlan?.budget || '0'}</span>
               </div>
             </div>
@@ -374,6 +424,7 @@ const HomePage = ({ onMapUpdate, showSidebar }) => {
                       <div className="activity-content">
                         <span className={`activity-type ${activity.type}`}>{activity.type}</span>
                         <p className="activity-description">{activity.description}</p>
+                        {activity.budget && <span className="activity-budget">💰 {activity.budget}</span>}
                       </div>
                     </div>
                   ))}
@@ -471,21 +522,22 @@ const LoggedInLayout = ({ children }) => {
           title={showSidebar ? '收起侧边栏' : '展开侧边栏'}
           style={{
             position: 'fixed',
-            left: showSidebar ? 'calc(75% - 15px)' : '15px', // 调整位置，确保完全可见
-            top: '120px', // 调整到顶部位置，避免被功能栏遮挡
-            width: '50px',
-            height: '50px',
-            borderRadius: '50%',
-            backgroundColor: '#fff',
+            left: showSidebar ? 'calc(75%)' : '10px', // 固定在侧边栏分界线右侧
+            top: '100px',
+            width: '40px',
+            height: '40px',
+            borderRadius: '5px',
+            backgroundColor: 'white',
             color: '#333',
-            border: '2px solid #4a90e2',
-            boxShadow: '0 4px 12px rgba(74, 144, 226, 0.3)',
+            border: '1px solid #ddd',
+            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
             fontSize: '20px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999, // 大幅提高z-index，确保在最顶层
+            zIndex: 9999, // 确保在最顶层
+            padding: '8px',
             transition: 'left 0.3s ease, background-color 0.2s ease, transform 0.2s ease'
           }}
           onMouseEnter={(e) => {e.target.style.backgroundColor = '#f0f7ff'; e.target.style.transform = 'scale(1.05)'}}
@@ -559,10 +611,12 @@ function App() {
           <nav>
             <Link to="/">首页</Link>
             <Link to="/my-plans">我的计划</Link>
+            <Link to="/expense-management">费用记录</Link>
             {user && (
               <div className="user-menu">
-                <span className="user-email">{user.email}</span>
-                <button className="logout-btn" onClick={handleLogout}>退出登录</button>
+                <Link to="/user-profile" className="user-profile-link">
+                  用户信息管理
+                </Link>
               </div>
             )}
           </nav>
@@ -592,6 +646,27 @@ function App() {
               <LoggedInLayout>
                 <MyPlansPage />
               </LoggedInLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/expense-management" 
+          element={
+            <ProtectedRoute>
+              <LoggedInLayout>
+                <ExpenseManagementPage />
+              </LoggedInLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/user-profile" 
+          element={
+            <ProtectedRoute>
+              {/* 用户信息管理页面不显示地图 */}
+              <div className="no-map-container">
+                <UserProfilePage />
+              </div>
             </ProtectedRoute>
           } 
         />
