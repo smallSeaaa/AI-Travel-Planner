@@ -1,20 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 
 // 创建Supabase客户端
-let supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-let supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// 优先从window.env获取（用于Docker容器环境），其次从import.meta.env获取（用于开发环境）
+let supabaseUrl = (window && window.env && window.env.VITE_SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL
+let supabaseAnonKey = (window && window.env && window.env.VITE_SUPABASE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// 提供默认值以防止应用崩溃
-if (!supabaseUrl) {
-  console.error('Supabase URL未配置，请检查.env文件中的VITE_SUPABASE_URL')
-  // 开发环境下使用临时占位符避免崩溃
-  supabaseUrl = 'https://default-url.supabase.co'
+// 提供更友好的错误处理，不再使用无效的占位符URL
+if (!supabaseUrl || supabaseUrl === 'https://default-url.supabase.co') {
+  console.error('错误: Supabase URL未正确配置，请确保环境变量VITE_SUPABASE_URL已设置')
+  throw new Error('Supabase URL未正确配置')
 }
 
-if (!supabaseAnonKey) {
-  console.error('Supabase Anon Key未配置，请检查.env文件中的VITE_SUPABASE_ANON_KEY')
-  // 开发环境下使用临时占位符避免崩溃
-  supabaseAnonKey = 'default-anon-key'
+if (!supabaseAnonKey || supabaseAnonKey === 'default-anon-key') {
+  console.error('错误: Supabase Anon Key未正确配置，请确保环境变量VITE_SUPABASE_ANON_KEY已设置')
+  throw new Error('Supabase Anon Key未正确配置')
 }
 
 let supabase;
