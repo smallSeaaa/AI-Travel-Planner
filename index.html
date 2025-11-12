@@ -8,6 +8,8 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- 优先加载环境变量配置，用于Docker容器环境 -->
+    <script src="/env-config.js"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
