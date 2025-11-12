@@ -485,7 +485,7 @@ nav a:hover {
 /* 位置信息窗口 */
 .location-info-window {
   position: absolute;
-  bottom: 20px;
+  bottom: 50px;
   left: 20px;
   background-color: white;
   padding: 1rem;

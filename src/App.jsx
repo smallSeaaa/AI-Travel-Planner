@@ -549,14 +549,14 @@ const LoggedInLayout = ({ children }) => {
         </button>
         
         {/* 选中位置信息窗口 */}
-        {selectedLocation && (
+        {/* {selectedLocation && (
           <div className="location-info-window">
             <h4>{selectedLocation.title}</h4>
             <p>第{selectedLocation.day}天 {selectedLocation.time}</p>
             <p>类型: {selectedLocation.type}</p>
             <button onClick={() => setSelectedLocation(null)}>关闭</button>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* 侧边栏容器 - 用于显示页面内容 */}

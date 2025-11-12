@@ -198,8 +198,6 @@ const ExpenseManagementPage = () => {
           }
         }
         
-        setSuccess(`语音识别成功: ${recognizedText}`);
-        setTimeout(() => setSuccess(''), 3000);
       }
     } catch (err) {
       console.error('语音识别停止失败:', err);
@@ -320,15 +318,7 @@ const ExpenseManagementPage = () => {
                       onChange={handleAmountChange}
                       placeholder="请输入数字金额"
                     />
-                    <button 
-                      type="button"
-                      onClick={() => isRecording && recordingType === 'amount' ? stopSpeechRecognition() : startSpeechRecognition('amount')}
-                      className={`voice-button ${isRecording && recordingType === 'amount' ? 'recording' : ''}`}
-                      disabled={isRecording && recordingType !== 'amount'}
-                      title={isRecording && recordingType === 'amount' ? '停止录音' : '开始语音输入'}
-                    >
-                      🎤
-                    </button>
+                   
                   </div>
                 </div>
 
