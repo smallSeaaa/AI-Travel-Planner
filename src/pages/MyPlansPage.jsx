@@ -30,6 +30,8 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
   const [searchResults, setSearchResults] = useState([])
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [searchingActivity, setSearchingActivity] = useState(null)
+  const [isRouteSelectionMode, setIsRouteSelectionMode] = useState(false)
+  const [selectedActivities, setSelectedActivities] = useState([])
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -128,6 +130,9 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
     setActivePlan(parsedPlan)
     // 重置编辑状态
     setIsEditing(false)
+    // 重置选择状态
+    setIsRouteSelectionMode(false)
+    setSelectedActivities([])
     
     // 更新地图数据
     if (onMapUpdate && parsedPlan.daily_plans) {
@@ -166,6 +171,26 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
       });
       
       onMapUpdate(markers, routes);
+    }
+  }
+  
+  // 处理活动选择
+  const handleActivitySelection = (day, index, activity) => {
+    // 检查是否已经选中
+    const isAlreadySelected = selectedActivities.some(
+      item => item.dayIndex === day && item.activityIndex === index
+    );
+    
+    if (isAlreadySelected) {
+      // 如果已选中，则取消选择
+      setSelectedActivities(prev => 
+        prev.filter(item => !(item.dayIndex === day && item.activityIndex === index))
+      );
+    } else {
+      // 如果未选中且有坐标，且未达到最大选择数量，则添加选择
+      if (selectedActivities.length < 2) {
+        setSelectedActivities(prev => [...prev, { dayIndex: day, activityIndex: index, activity }]);
+      }
     }
   }
 
@@ -269,6 +294,44 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
   };
   
   // 处理地点搜索
+  const handlePlanRoute = () => {
+    if (selectedActivities.length === 2) {
+      // 按活动时间排序，确定真正的起点和终点
+      const sortedActivities = [...selectedActivities].sort((a, b) => {
+        // 获取活动时间，默认为空字符串
+        const timeA = a.activity.time || '';
+        const timeB = b.activity.time || '';
+        // 按时间字符串进行排序
+        return timeA.localeCompare(timeB);
+      });
+      
+      const [startActivity, endActivity] = sortedActivities;
+      
+      // 构建路线信息，适配活动数据结构
+      const routeInfo = {
+        start: {
+          name: startActivity.activity.description || '起点',
+          lat: startActivity.activity.lat || startActivity.activity.coordinates?.lat,
+          lng: startActivity.activity.lng || startActivity.activity.coordinates?.lng
+        },
+        end: {
+          name: endActivity.activity.description || '终点',
+          lat: endActivity.activity.lat || endActivity.activity.coordinates?.lat,
+          lng: endActivity.activity.lng || endActivity.activity.coordinates?.lng
+        }
+      };
+      
+      // 调用父组件传入的地图更新函数
+      if (onMapUpdate) {
+        // 使用路线数组格式传递，以便支持多条路线
+        onMapUpdate([], [routeInfo]);
+      }
+      
+      // 可以在这里添加额外的路线规划逻辑
+      console.log('规划路线:', routeInfo);
+    }
+  };
+
   const handleLocationSearch = async (dayIndex, activityIndex) => {
     const activity = editForm.daily_plans[dayIndex].activities[activityIndex];
     if (!activity.locationSearch) {
@@ -621,7 +684,30 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
         {activePlan ? (
           // 显示计划详情
           <div className="plan-details-view">
-            <button className="back-btn" onClick={handleBackToList}>← 返回列表</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
+              <button className="back-btn" onClick={handleBackToList}>← 返回列表</button>
+              <div>
+                {isRouteSelectionMode && (
+                  <button 
+                    className="plan-route-btn" 
+                    onClick={handlePlanRoute}
+                    disabled={selectedActivities.length !== 2}
+                    style={{ marginRight: '10px' }}
+                  >
+                    规划路线
+                  </button>
+                )}
+                <button className="nav-route-btn" onClick={() => {
+                                  setIsRouteSelectionMode(!isRouteSelectionMode);
+                                  // 如果关闭选择模式，清空已选择的活动
+                                  if (isRouteSelectionMode) {
+                                    setSelectedActivities([]);
+                                  }
+                                }}>
+                                  {isRouteSelectionMode ? '取消导航' : '导航路线'}
+                                </button>
+              </div>
+            </div>
             
             {updateSuccess && (
               <div className="update-success-message">
@@ -856,36 +942,40 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
             ) : (
               // 查看模式 - 显示详情
               <>
-                <div className="plan-header">
-                  <h2>{activePlan.destination}</h2>
-                  <div className="plan-meta">
-                    <span>创建时间: {new Date(activePlan.created_at).toLocaleString()}</span>
-                    {activePlan.updated_at && activePlan.updated_at !== activePlan.created_at && (
-                      <span>更新时间: {new Date(activePlan.updated_at).toLocaleString()}</span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="plan-overview">
-                  <div className="plan-summary">
-                    <div className="plan-details">
-                      <span>行程天数：{activePlan.duration}</span>
-                      <span>同行人数：{activePlan.travelers}人</span>
-                      <span>预算：{activePlan.budget}</span>
+                {!isRouteSelectionMode && (
+                  <>
+                    <div className="plan-header">
+                      <h2>{activePlan.destination}</h2>
+                      <div className="plan-meta">
+                        <span>创建时间: {new Date(activePlan.created_at).toLocaleString()}</span>
+                        {activePlan.updated_at && activePlan.updated_at !== activePlan.created_at && (
+                          <span>更新时间: {new Date(activePlan.updated_at).toLocaleString()}</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-                
-                <div className="plan-highlights">
-                  <div className="highlight-card">
-                    <h4>住宿建议</h4>
-                    <p>{activePlan.accommodation}</p>
-                  </div>
-                  <div className="highlight-card">
-                    <h4>交通建议</h4>
-                    <p>{activePlan.transportation}</p>
-                  </div>
-                </div>
+                    
+                    <div className="plan-overview">
+                      <div className="plan-summary">
+                        <div className="plan-details">
+                          <span>行程天数：{activePlan.duration}</span>
+                          <span>同行人数：{activePlan.travelers}人</span>
+                          <span>预算：{activePlan.budget}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="plan-highlights">
+                      <div className="highlight-card">
+                        <h4>住宿建议</h4>
+                        <p>{activePlan.accommodation}</p>
+                      </div>
+                      <div className="highlight-card">
+                        <h4>交通建议</h4>
+                        <p>{activePlan.transportation}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="daily-plans">
                   <h3>每日行程安排</h3>
@@ -895,77 +985,108 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
                   <h4>第{dayPlan.day}天</h4>
                 </div>
                       <div className="activities-list">
-                        {(dayPlan.activities || []).map((activity, index) => (
-                          <div key={index} className="activity-item">
-                            <div className="activity-time">{activity.time}</div>
-                            <div className="activity-content">
-                              <span className={`activity-type ${activity.type}`}>{activity.type}</span>
-                              <p className="activity-description">{activity.description}</p>
-                              {activity.coordinates && (
-                                <div className="location-info">
-                                  <span className="address-text">{activity.address || '已设置坐标'}</span>
-                                  <button 
-                                    className="locate-btn"
-                                    onClick={() => handleLocateActivity(activity)}
-                                  >
-                                    在地图上定位
-                                  </button>
-                                </div>
-                              )}
+                        {(isRouteSelectionMode 
+                          ? (dayPlan.activities || []).filter(activity => 
+                              activity.coordinates && activity.coordinates.lat && activity.coordinates.lng
+                            ) 
+                          : (dayPlan.activities || [])
+                        ).map((activity, index) => {
+                          // 检查活动是否有坐标
+                          const hasCoordinates = activity.coordinates && activity.coordinates.lat && activity.coordinates.lng;
+                          // 检查活动是否被选中
+                          const isSelected = isRouteSelectionMode && selectedActivities.some(
+                            item => item.dayIndex === dayPlan.day && item.activityIndex === index
+                          );
+                          // 是否可以选择
+                          const canSelect = isRouteSelectionMode && hasCoordinates;
+                          
+                          return (
+                            <div 
+                              key={index} 
+                              className={`activity-item ${isSelected ? 'selected' : ''}`}
+                              onClick={canSelect ? () => handleActivitySelection(dayPlan.day, index, activity) : undefined}
+                              style={canSelect ? { cursor: 'pointer' } : {}}
+                            >
+                              <div className="activity-time">{activity.time}</div>
+                              <div className="activity-content">
+                                <span className={`activity-type ${activity.type}`}>{activity.type}</span>
+                                <p className="activity-description">{activity.description}</p>
+                                {activity.coordinates && (
+                                  <div className="location-info">
+                                    <span className="address-text">{activity.address || '已设置坐标'}</span>
+                                    <button 
+                                      className="locate-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleLocateActivity(activity);
+                                      }}
+                                    >
+                                      定位
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="travel-tips">
-                  <h3>旅行小贴士</h3>
-                  <ul>
-                    {(activePlan.tips || []).map((tip, index) => (
-                      <li key={index}>{tip}</li>
-                    ))}
-                  </ul>
-                </div>
+                {!isRouteSelectionMode && (
+                  <div className="travel-tips">
+                    <h3>旅行小贴士</h3>
+                    <ul>
+                      {(activePlan.tips || []).map((tip, index) => (
+                        <li key={index}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </>
             )}
             
-            <div className="plan-actions">
-              {isEditing && activePlan.id === editForm.id ? (
-                <>
-                  <button 
-                    className="save-btn" 
-                    onClick={handleSaveEdit}
-                    disabled={isUpdating}
-                  >
-                    {isUpdating ? '保存中...' : '保存修改'}
-                  </button>
-                  <button 
-                    className="cancel-btn" 
-                    onClick={handleCancelEdit}
-                    disabled={isUpdating}
-                  >
-                    取消
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button className="edit-btn" onClick={() => handleEditPlan(activePlan)}>
-                    编辑计划
-                  </button>
-                  <button 
-                    className="delete-btn" 
-                    onClick={() => handleDeletePlan(activePlan.id)}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? '删除中...' : '删除计划'}
-                  </button>
-                </>
-              )}
+            {!isRouteSelectionMode && (
+              <div className="plan-actions">
+                {isEditing && activePlan.id === editForm.id ? (
+                  <>
+                    <button 
+                      className="save-btn" 
+                      onClick={handleSaveEdit}
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? '保存中...' : '保存修改'}
+                    </button>
+                    <button 
+                      className="cancel-btn" 
+                      onClick={handleCancelEdit}
+                      disabled={isUpdating}
+                    >
+                      取消
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      className="edit-btn" 
+                      onClick={() => handleEditPlan(activePlan)}
+                    >
+                      编辑计划
+                    </button>
+                    <button 
+                      className="delete-btn" 
+                      onClick={() => handleDeletePlan(activePlan.id)}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? '删除中...' : '删除计划'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             </div>
-          </div>
-        ) : (
+          ) : (
           // 显示计划列表
           <div className="plans-list">
             {plans.length === 0 ? (
@@ -1008,8 +1129,8 @@ const MyPlansPage = ({ onMapUpdate, showSidebar }) => {
           </div>
         )}
       </div>
-      </div>
-    );
+    </div>
+  );
 };
 
 export default MyPlansPage;

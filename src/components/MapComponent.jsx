@@ -4,6 +4,7 @@ const SimpleMapComponent = ({
   center = { lng: 116.404, lat: 39.915 }, 
   zoom = 12, 
   markers = [], 
+  routes = [],
   onPointClick = () => {} 
 }) => {
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -11,6 +12,8 @@ const SimpleMapComponent = ({
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const apiKey = import.meta.env.VITE_BAIDU_MAP_API_KEY;
+  const routeServiceRef = useRef(null); // 用于存储路线服务实例
+  const routeOverlaysRef = useRef([]); // 用于存储路线覆盖物引用
 
   useEffect(() => {
     // 如果已经加载完成，直接返回
@@ -82,7 +85,7 @@ const SimpleMapComponent = ({
             opacity: 0.9
           });
           
-          mapInstanceRef.current.addOverlay(label);
+          map.addOverlay(label);
           
           // 添加点击事件
           bdMarker.addEventListener('click', () => {
@@ -111,6 +114,35 @@ const SimpleMapComponent = ({
             });
           }
         });
+
+        // 初始化路线服务
+        if (window.BMapGL.DrivingRoute) {
+          routeServiceRef.current = new window.BMapGL.DrivingRoute(map, {
+            renderOptions: {
+              map: map,
+              autoViewport: true,
+              policy: window.BMAP_DRIVING_POLICY_LEAST_TIME // 最快路线
+            },
+            onSearchComplete: (results) => {
+              console.log('Route search complete:', results);
+              if (routeServiceRef.current.getStatus() === window.BMAP_STATUS_SUCCESS) {
+                console.log('Route found successfully');
+              } else {
+                console.error('Route search failed with status:', routeServiceRef.current.getStatus());
+              }
+            },
+            onPolylinesSet: (routes, route) => {
+              console.log('Route polyline set, adding to overlays ref');
+              // 保存路线覆盖物引用以便后续清除
+              routes.forEach(route => {
+                routeOverlaysRef.current.push(route);
+              });
+            }
+          });
+        }
+
+        // 绘制路线
+        renderRoutes(map, routes);
 
         mapInstanceRef.current = map;
         setMapLoaded(true);
@@ -177,17 +209,144 @@ const SimpleMapComponent = ({
       // 清理回调函数
       delete window.baiduMapInit;
     };
-  }, [apiKey, center, zoom, markers, onPointClick, mapLoaded, loadError]);
+  }, [apiKey, center, zoom, markers, routes, onPointClick, mapLoaded, loadError]);
   
-  // 监听markers变化
+  // 绘制路线的函数
+  const renderRoutes = (map, routesList) => {
+    if (!window.BMapGL || !map || !routesList || routesList.length === 0) return;
+    
+    // 清除之前的路线覆盖物
+    clearRouteOverlays();
+    
+    routesList.forEach((route) => {
+      try {
+        // 处理起点终点格式的路线（routeInfo）
+        if (route.start && route.end) {
+          console.log('Rendering route with start and end points:', route);
+          
+          // 创建起点标记
+          const startPoint = new window.BMapGL.Point(route.start.lng, route.start.lat);
+          const startMarker = new window.BMapGL.Marker(startPoint, {
+            title: route.start.name || '起点'
+          });
+          
+          // 设置起点样式为绿色
+          const startLabel = new window.BMapGL.Label('起点', {
+            position: startPoint,
+            offset: new window.BMapGL.Size(-10, -30)
+          });
+          startLabel.setStyle({
+            backgroundColor: 'green',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            border: 'none'
+          });
+          map.addOverlay(startLabel);
+          map.addOverlay(startMarker);
+          
+          // 创建终点标记
+          const endPoint = new window.BMapGL.Point(route.end.lng, route.end.lat);
+          const endMarker = new window.BMapGL.Marker(endPoint, {
+            title: route.end.name || '终点'
+          });
+          
+          // 设置终点样式为红色
+          const endLabel = new window.BMapGL.Label('终点', {
+            position: endPoint,
+            offset: new window.BMapGL.Size(-10, -30)
+          });
+          endLabel.setStyle({
+            backgroundColor: 'red',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            border: 'none'
+          });
+          map.addOverlay(endLabel);
+          map.addOverlay(endMarker);
+          
+          // 使用百度地图导航API获取真实路线
+          if (routeServiceRef.current) {
+            console.log('Searching for driving route using Baidu Map API');
+            routeServiceRef.current.search(startPoint, endPoint);
+          } else {
+            // 如果路线服务不可用，回退到简单的直线连接
+            console.warn('Route service not available, falling back to simple polyline');
+            const points = [startPoint, endPoint];
+            const polyline = new window.BMapGL.Polyline(points, {
+              strokeColor: "blue",
+              strokeWeight: 5,
+              strokeOpacity: 0.8
+            });
+            map.addOverlay(polyline);
+            
+            // 保存覆盖物引用
+            routeOverlaysRef.current.push(polyline);
+          }
+          
+          // 调整地图视野以显示整个路线
+          const view = new window.BMapGL.Viewport([startPoint, endPoint], map);
+          view.setZoom(14); // 设置一个合适的缩放级别
+          
+        } else if (route.points && route.points.length > 1) {
+          // 处理普通多点路线
+          console.log('Rendering multi-point route:', route);
+          
+          const points = route.points.map(point => 
+            new window.BMapGL.Point(point.lng, point.lat)
+          );
+          
+          // 创建路线
+          const polyline = new window.BMapGL.Polyline(points, {
+            strokeColor: "blue",
+            strokeWeight: 5,
+            strokeOpacity: 0.8
+          });
+          map.addOverlay(polyline);
+          
+          // 保存覆盖物引用
+          routeOverlaysRef.current.push(polyline);
+        }
+      } catch (error) {
+        console.error('Error rendering route:', error, 'Route data:', route);
+      }
+    });
+  };
+  
+  // 清除路线覆盖物
+  const clearRouteOverlays = () => {
+    if (routeOverlaysRef.current.length > 0) {
+      console.log('Clearing route overlays');
+      routeOverlaysRef.current.forEach(overlay => {
+        if (mapInstanceRef.current) {
+          try {
+            mapInstanceRef.current.removeOverlay(overlay);
+          } catch (error) {
+            console.warn('Error removing overlay:', error);
+          }
+        }
+      });
+      routeOverlaysRef.current = [];
+    }
+    
+    // 如果路线服务存在，重置它
+    if (routeServiceRef.current) {
+      routeServiceRef.current.clearResults();
+    }
+  };
+
+  // 监听markers和routes变化
   useEffect(() => {
-    console.log('MapComponent markers updated:', markers);
+    console.log('MapComponent markers or routes updated:', { markers, routes });
     if (mapLoaded && mapInstanceRef.current) {
-      // 清除旧的标记
+      // 清除旧的标记和路线
       mapInstanceRef.current.clearOverlays();
       
-      if (markers.length > 0) {
-        console.log('Map instance exists, updating center and markers');
+      if (markers.length > 0 || routes.length > 0) {
+        console.log('Map instance exists, updating markers and routes');
         
         // 添加新的标记
         markers.forEach((marker, index) => {
@@ -260,15 +419,20 @@ const SimpleMapComponent = ({
           mapInstanceRef.current.addOverlay(bdMarker);
         });
         
-        // 自动调整地图中心到第一个标记点
-        const firstMarker = markers[0];
-        if (firstMarker && firstMarker.position) {
-          const point = new window.BMapGL.Point(firstMarker.position.lng, firstMarker.position.lat);
-          mapInstanceRef.current.centerAndZoom(point, 15); // 缩放到合适的级别
+        // 绘制路线
+        renderRoutes(mapInstanceRef.current, routes);
+        
+        // 如果没有路线，自动调整地图中心到第一个标记点
+        if (routes.length === 0 && markers.length > 0) {
+          const firstMarker = markers[0];
+          if (firstMarker && firstMarker.position) {
+            const point = new window.BMapGL.Point(firstMarker.position.lng, firstMarker.position.lat);
+            mapInstanceRef.current.centerAndZoom(point, 15); // 缩放到合适的级别
+          }
         }
       }
     }
-  }, [markers, mapLoaded, onPointClick]);
+  }, [markers, routes, mapLoaded, onPointClick]);
 
   const handleRetry = () => {
     setMapLoaded(false);
@@ -277,8 +441,10 @@ const SimpleMapComponent = ({
       mapInstanceRef.current.destroy();
       mapInstanceRef.current = null;
     }
-    // 清理加载状态
+    // 清理加载状态和路线覆盖物
     window._baiduMapLoading = false;
+    routeOverlaysRef.current = [];
+    routeServiceRef.current = null;
   };
 
   if (loadError) {
