@@ -1,14 +1,29 @@
 import { createClient } from '@supabase/supabase-js'
 
 // 创建Supabase客户端
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+let supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+let supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase配置错误，请检查.env.local文件')
+// 提供默认值以防止应用崩溃
+if (!supabaseUrl) {
+  console.error('Supabase URL未配置，请检查.env文件中的VITE_SUPABASE_URL')
+  // 开发环境下使用临时占位符避免崩溃
+  supabaseUrl = 'https://default-url.supabase.co'
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+if (!supabaseAnonKey) {
+  console.error('Supabase Anon Key未配置，请检查.env文件中的VITE_SUPABASE_ANON_KEY')
+  // 开发环境下使用临时占位符避免崩溃
+  supabaseAnonKey = 'default-anon-key'
+}
+
+let supabase;
+try {
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
+} catch (error) {
+  console.error('创建Supabase客户端失败:', error)
+  throw error
+}
 
 // 认证相关功能封装
 export const auth = {

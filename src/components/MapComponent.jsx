@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { getUserSystemConfig } from '../services/systemConfigService';
 
 const SimpleMapComponent = ({ 
   center = { lng: 116.404, lat: 39.915 }, 
@@ -9,16 +10,42 @@ const SimpleMapComponent = ({
 }) => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [apiKey, setApiKey] = useState(null);
+  const [configLoading, setConfigLoading] = useState(true);
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const apiKey = import.meta.env.VITE_BAIDU_MAP_API_KEY;
   const routeServiceRef = useRef(null); // 用于存储路线服务实例
   const routeOverlaysRef = useRef([]); // 用于存储路线覆盖物引用
 
+  // 加载系统配置获取百度地图API密钥
   useEffect(() => {
-    // 如果已经加载完成，直接返回
+    const loadConfig = async () => {
+      try {
+        setConfigLoading(true);
+        const result = await getUserSystemConfig();
+        console.log('获取系统配置结果:', result);
+        if (result.success && result.data && result.data.baiduMapApiKey) {
+          setApiKey(result.data.baiduMapApiKey);
+          console.log('成功设置百度地图API密钥');
+        } else {
+          console.error('百度地图API密钥未配置或获取失败:', result.error || '无配置数据');
+          setLoadError('百度地图API密钥未配置，请在系统设置中配置');
+        }
+      } catch (error) {
+        console.error('加载系统配置失败:', error);
+        setLoadError('加载系统配置失败: ' + error.message);
+      } finally {
+        setConfigLoading(false);
+      }
+    };
+
+    loadConfig();
+  }, []);
+
+  useEffect(() => {
+    // 如果配置还在加载中，或者已经加载完成，或者有错误，直接返回
     console.log('MapComponent useEffect triggered - Initial load');
-    if (mapLoaded || loadError) return;
+    if (configLoading || mapLoaded || loadError || !apiKey) return;
 
     const initializeMap = () => {
       try {
@@ -189,7 +216,7 @@ const SimpleMapComponent = ({
     script.onerror = (error) => {
       console.error('Failed to load Baidu Map API:', error);
       window._baiduMapLoading = false;
-      setLoadError('百度地图API加载失败，请检查网络连接和AK配置');
+      setLoadError('百度地图API加载失败，请检查网络连接和API密钥配置');
     };
 
     document.head.appendChild(script);
@@ -209,7 +236,7 @@ const SimpleMapComponent = ({
       // 清理回调函数
       delete window.baiduMapInit;
     };
-  }, [apiKey, center, zoom, markers, routes, onPointClick, mapLoaded, loadError]);
+  }, [apiKey, center, zoom, markers, routes, onPointClick, mapLoaded, loadError, configLoading]);
   
   // 绘制路线的函数
   const renderRoutes = (map, routesList) => {
@@ -437,6 +464,25 @@ const SimpleMapComponent = ({
   const handleRetry = () => {
     setMapLoaded(false);
     setLoadError(null);
+    // 重新加载配置
+    const loadConfig = async () => {
+      try {
+        setConfigLoading(true);
+        const result = await getUserSystemConfig();
+        console.log('重试获取系统配置结果:', result);
+        if (result.success && result.data && result.data.baiduMapApiKey) {
+          setApiKey(result.data.baiduMapApiKey);
+        } else {
+          setLoadError('百度地图API密钥未配置，请在系统设置中配置');
+        }
+      } catch (error) {
+        setLoadError('加载系统配置失败: ' + error.message);
+      } finally {
+        setConfigLoading(false);
+      }
+    };
+    loadConfig();
+    
     if (mapInstanceRef.current) {
       mapInstanceRef.current.destroy();
       mapInstanceRef.current = null;
@@ -461,8 +507,8 @@ const SimpleMapComponent = ({
         <div style={{ color: '#ff4d4f', marginBottom: '16px', textAlign: 'center' }}>
           {loadError}
           <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-            AK: {apiKey ? `${apiKey.substring(0, 8)}...` : '未配置'}
-          </div>
+              API密钥: {apiKey ? `${apiKey.substring(0, 8)}...` : '未配置'}
+            </div>
         </div>
         <button 
           onClick={handleRetry}
@@ -492,6 +538,25 @@ const SimpleMapComponent = ({
         }}
       />
       
+      {/* 中国地点选择提示 */}
+      {mapLoaded && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          padding: '8px 12px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+          fontSize: '12px',
+          color: '#1890ff',
+          zIndex: 999,
+          maxWidth: '200px'
+        }}>
+          💡 提示：请选择中国境内的地点以获得最佳导航体验
+        </div>
+      )}
+      
       {!mapLoaded && (
         <div style={{ 
           position: 'absolute',
@@ -506,9 +571,12 @@ const SimpleMapComponent = ({
           zIndex: 1000
         }}>
           <div style={{ textAlign: 'center' }}>
-            <div>地图加载中...</div>
+            <div>{configLoading ? '加载配置中...' : '地图加载中...'}</div>
             <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-              首次加载可能需要几秒钟
+              {configLoading ? '正在获取API密钥配置' : '首次加载可能需要几秒钟'}
+            </div>
+            <div style={{ fontSize: '12px', color: '#1890ff', marginTop: '8px', fontWeight: 'bold' }}>
+              提示：当前地图功能主要支持中国地区的定位和导航
             </div>
           </div>
         </div>

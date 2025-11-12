@@ -615,7 +615,7 @@ function App() {
             {user && (
               <div className="user-menu">
                 <Link to="/user-profile" className="user-profile-link">
-                  用户信息管理
+                  系统设置
                 </Link>
               </div>
             )}
@@ -663,7 +663,7 @@ function App() {
           path="/user-profile" 
           element={
             <ProtectedRoute>
-              {/* 用户信息管理页面不显示地图 */}
+            {/* 系统设置页面不显示地图 */}
               <div className="no-map-container">
                 <UserProfilePage />
               </div>

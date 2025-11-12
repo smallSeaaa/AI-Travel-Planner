@@ -1,5 +1,6 @@
 // 大语言模型服务封装
 import { getUserPreferences } from './userPreferencesService';
+import systemConfigService from './systemConfigService';
 
 /**
  * 调用大语言模型API生成旅行计划
@@ -118,19 +119,28 @@ JSON结构如下：
  * 调用大语言模型API
  */
 const callLLMAPI = async (prompt) => {
-  // 获取环境变量中的API密钥和基础URL（使用Vite的import.meta.env）
-  const apiKey = import.meta.env.VITE_LLM_API_KEY;
-  const apiBaseUrl = import.meta.env.VITE_LLM_API_BASE_URL || '';
-  
-  // 检查API密钥是否存在
-  if (!apiKey || !apiBaseUrl) {
-    throw new Error('未配置有效的LLM API密钥或基础URL，请在.env文件中正确配置VITE_LLM_API_KEY和VITE_LLM_API_BASE_URL');
+  try {
+    // 从systemConfigService获取配置
+    const configResult = await systemConfigService.getUserSystemConfig();
+    
+    if (!configResult.success) {
+      throw new Error('获取系统配置失败: ' + configResult.error);
+    }
+    
+    const { llmApiKey, llmApiBaseUrl } = configResult.data || {};
+    
+    // 检查API密钥是否存在
+    if (!llmApiKey || !llmApiBaseUrl) {
+      throw new Error('未配置有效的LLM API密钥或基础URL，请在系统设置中正确配置');
+    }
+    
+    // 规范化API基础URL，确保以斜杠结尾
+    const normalizedBaseUrl = llmApiBaseUrl.endsWith('/') ? llmApiBaseUrl : `${llmApiBaseUrl}/`;
+    return callZhiPuAI(prompt, llmApiKey, normalizedBaseUrl);
+  } catch (error) {
+    console.error('获取LLM配置失败:', error);
+    throw error;
   }
-  
-  // 规范化API基础URL，确保以斜杠结尾
-  const normalizedBaseUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl : `${apiBaseUrl}/`;
-  return callZhiPuAI(prompt, apiKey, normalizedBaseUrl);
-
 };
 
 /**
@@ -149,13 +159,13 @@ const callZhiPuAI = async (prompt, apiKey, apiBaseUrl) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: import.meta.env.VITE_LLM_MODEL || "glm-4", // 使用环境变量或默认智谱GLM-4模型
+        model: "glm-4", // 使用默认智谱GLM-4模型
         messages: [
           { role: "system", content: "你是一位专业的旅行规划师，擅长根据用户需求制定详细的旅行计划。请严格按照用户要求的JSON格式返回结果。" },
           { role: "user", content: prompt }
         ],
-        temperature: parseFloat(import.meta.env.VITE_LLM_TEMPERATURE || 0.7),
-        max_tokens: parseInt(import.meta.env.VITE_LLM_MAX_TOKENS || 4000),
+        temperature: 0.7, // 使用默认温度值
+        max_tokens: 4000, // 使用默认最大令牌数
         response_format: { type: "json_object" }
       })
     });

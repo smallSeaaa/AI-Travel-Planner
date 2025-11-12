@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import supabase from '../supabaseClient';
 import { getUserPreferences, addUserPreference, deleteUserPreference } from '../services/userPreferencesService';
+import systemConfigService from '../services/systemConfigService';
 import '../App.css';
 
 const UserProfilePage = () => {
@@ -25,6 +26,15 @@ const UserProfilePage = () => {
   const [isAddingPreference, setIsAddingPreference] = useState(false);
   const [newPreference, setNewPreference] = useState('');
   const [preferenceError, setPreferenceError] = useState(null);
+  const [isEditingSystemConfig, setIsEditingSystemConfig] = useState(false);
+  const [systemConfig, setSystemConfig] = useState({
+    llmApiKey: '',
+    llmApiBaseUrl: '',
+    baiduMapApiKey: ''
+  });
+  const [systemConfigError, setSystemConfigError] = useState(null);
+  const [systemConfigSuccess, setSystemConfigSuccess] = useState(null);
+  const [configLoading, setConfigLoading] = useState(false);
 
   // 获取用户信息和偏好
   useEffect(() => {
@@ -47,9 +57,27 @@ const UserProfilePage = () => {
         // 获取用户偏好
         const preferences = await getUserPreferences(user.id);
         setUserPreferences(preferences);
+        
+        // 获取用户系统配置
+        setConfigLoading(true);
+        const configResult = await systemConfigService.getUserSystemConfig();
+        setConfigLoading(false);
+        
+        if (configResult.success) {
+          setSystemConfig(configResult.data);
+        } else {
+          console.error('获取系统配置失败:', configResult.error);
+          setSystemConfigError('获取系统配置失败，请稍后重试');
+          // 5秒后自动清除错误信息
+          setTimeout(() => {
+            setSystemConfigError(null);
+          }, 5000);
+        }
       } catch (err) {
         console.error('获取用户数据失败:', err);
         setError('获取用户数据失败');
+        setLoading(false);
+        setConfigLoading(false);
       } finally {
         setLoading(false);
       }
@@ -181,6 +209,61 @@ const UserProfilePage = () => {
     }
   };
 
+  // 处理系统配置字段变化
+  const handleConfigChange = (e) => {
+    const { name, value } = e.target;
+    setSystemConfig(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // 保存系统配置
+  const handleSaveSystemConfig = async () => {
+    // 清除之前的错误信息
+    setSystemConfigError(null);
+    
+    try {
+      // 添加完整的表单验证
+      // 1. 验证必填字段
+      const emptyFields = [];
+      if (!systemConfig.llmApiBaseUrl) emptyFields.push('大语言模型 API 地址');
+      if (!systemConfig.llmApiKey) emptyFields.push('大语言模型 API 密钥');
+      if (!systemConfig.baiduMapApiKey) emptyFields.push('百度地图 API 密钥');
+      
+      if (emptyFields.length > 0) {
+        setSystemConfigError(`请填写必填字段：${emptyFields.join('、')}`);
+        return;
+      }
+      
+      // 2. 验证URL格式
+      if (!systemConfig.llmApiBaseUrl.startsWith('https://')) {
+        setSystemConfigError('大语言模型 API 地址必须以 https:// 开头');
+        return;
+      }
+      
+      // 使用systemConfigService保存配置到数据库
+      setConfigLoading(true);
+      const result = await systemConfigService.saveUserSystemConfig(systemConfig);
+      setConfigLoading(false);
+      
+      if (result.success) {
+        setSystemConfigSuccess('系统配置保存成功！');
+        setIsEditingSystemConfig(false);
+        
+        // 3秒后自动关闭成功提示
+        setTimeout(() => {
+          setSystemConfigSuccess(null);
+        }, 3000);
+      } else {
+        throw new Error(result.error || '保存配置失败');
+      }
+    } catch (err) {
+      console.error('保存系统配置失败:', err);
+      setSystemConfigError(err.message || '保存系统配置失败，请重试');
+    }
+  };
+
   if (loading) {
     return <div className="loading-container">加载用户信息中...</div>;
   }
@@ -191,7 +274,7 @@ const UserProfilePage = () => {
 
   return (
     <div className="user-profile-container">
-      <h2>用户信息管理</h2>
+      <h2>系统设置</h2>
       
       {error && (
         <div className="error-message">
@@ -414,6 +497,108 @@ const UserProfilePage = () => {
             )}
           </div>
         )}
+      </div>
+
+      {/* 系统配置部分 */}
+      <div className="system-config-section">
+        <div className="profile-header">
+          <div className="title-with-status">
+            <h3>系统配置</h3>
+            {!configLoading && (
+              systemConfig.llmApiBaseUrl ? (
+                <span className="config-status-online">配置已设置</span>
+              ) : (
+                <span className="config-status-offline">配置未设置</span>
+              )
+            )}
+          </div>
+          {!isEditingSystemConfig  && (
+            <button 
+              className="edit-btn"
+              onClick={() => setIsEditingSystemConfig(true)}
+            >
+              编辑配置
+            </button>
+          )}
+        </div>
+
+        {isEditingSystemConfig && (
+          <div className="system-config-form">
+            {systemConfigError && (
+              <div className="error-message">
+                {systemConfigError}
+                <button onClick={() => setSystemConfigError(null)}>关闭</button>
+              </div>
+            )}
+            
+            {systemConfigSuccess && (
+              <div className="success-message">
+                {systemConfigSuccess}
+                <button onClick={() => setSystemConfigSuccess(null)}>关闭</button>
+              </div>
+            )}
+
+
+
+            <div className="detail-item">
+              <label>大语言模型 API 地址:</label>
+              <input 
+                type="text" 
+                name="llmApiBaseUrl" 
+                value={systemConfig.llmApiBaseUrl} 
+                onChange={handleConfigChange}
+                placeholder="请输入大语言模型 API 地址"
+              />
+            </div>
+
+            <div className="detail-item">
+              <label>大语言模型 API 密钥:</label>
+              <input 
+                type="text" 
+                name="llmApiKey" 
+                value={systemConfig.llmApiKey} 
+                onChange={handleConfigChange}
+                placeholder="请输入大语言模型 API 密钥"
+              />
+            </div>
+
+            <div className="detail-item">
+              <label>百度地图 API 密钥:</label>
+              <input 
+                type="text" 
+                name="baiduMapApiKey" 
+                value={systemConfig.baiduMapApiKey} 
+                onChange={handleConfigChange}
+                placeholder="请输入百度地图 API 密钥"
+              />
+            </div>
+
+            <div className="edit-actions">
+              <button 
+                className="save-btn"
+                onClick={handleSaveSystemConfig}
+                disabled={configLoading}
+              >
+                {configLoading ? '保存中...' : '保存配置'}
+              </button>
+              <button 
+                className="cancel-btn"
+                onClick={() => {
+                  setIsEditingSystemConfig(false);
+                  setSystemConfigError(null);
+                }}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* {configLoading && (
+          <div className="loading-overlay">
+            <div className="loading-spinner">加载中...</div>
+          </div>
+        )} */}
       </div>
 
       <div className="account-actions">

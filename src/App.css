@@ -1763,7 +1763,7 @@ button:disabled {
   display: none;
 }
 
-/* 用户信息管理页面样式 */
+/* 系统设置页面样式 */
 .no-map-container {
   margin-top: 60px; /* 导航栏高度 */
   min-height: calc(100vh - 60px);
@@ -1930,6 +1930,112 @@ button:disabled {
   margin-top: 2rem;
   border-top: 1px solid #eee;
   padding-top: 1.5rem;
+}
+
+/* 系统配置部分样式 */
+.system-config-section {
+  margin-top: 2rem;
+  border-top: 1px solid #eee;
+  padding-top: 1.5rem;
+}
+
+.system-config-form {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background-color: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+/* 系统配置表单项目样式 */
+.system-config-form .detail-item {
+  margin-bottom: 1.2rem;
+  padding: 1rem;
+  background-color: white;
+  border-left: 4px solid #3498db;
+}
+
+.system-config-form .detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.system-config-form .detail-item label {
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+  display: block;
+  min-width: auto;
+}
+
+.system-config-form .detail-item input {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.3s ease;
+}
+
+.system-config-form .detail-item input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.system-config-form .detail-item input::placeholder {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+/* 系统配置编辑操作 */
+.system-config-form .edit-actions {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+/* 配置状态标签样式 */
+.title-with-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.config-status-online {
+  color: #28a745;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: #d4edda;
+}
+
+.config-status-offline {
+  color: #dc3545;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: #f8d7da;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .system-config-form {
+    padding: 1rem;
+  }
+  
+  .system-config-form .edit-actions {
+    flex-direction: column;
+  }
+  
+  .system-config-form .edit-actions button {
+    width: 100%;
+  }
 }
 
 /* 用户偏好部分样式 */
@@ -2120,7 +2226,7 @@ button:disabled {
   font-size: 1.1rem;
 }
 
-/* 导航栏用户信息管理链接样式 */
+/* 导航栏系统设置链接样式 */
 .user-profile-link {
   color: #34495e;
   text-decoration: none;
