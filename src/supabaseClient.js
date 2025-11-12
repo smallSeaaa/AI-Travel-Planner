@@ -1,19 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
 
 // 创建Supabase客户端
-// 优先从window.env获取（用于Docker容器环境），其次从import.meta.env获取（用于开发环境）
-let supabaseUrl = (window && window.env && window.env.VITE_SUPABASE_URL) || import.meta.env.VITE_SUPABASE_URL
-let supabaseAnonKey = (window && window.env && window.env.VITE_SUPABASE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// 提供更友好的错误处理，不再使用无效的占位符URL
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://dbbjwzpilhzxidrttyur.supabase.co';
+
+// 提供默认值以防止应用崩溃
 if (!supabaseUrl) {
-  console.error('错误: Supabase URL未正确配置，请确保环境变量VITE_SUPABASE_URL已设置')
-  throw new Error('Supabase URL未正确配置')
+  console.error('Supabase URL未配置，请检查.env文件中的VITE_SUPABASE_URL')
+  // 开发环境下使用临时占位符避免崩溃
+  supabaseUrl = 'https://default-url.supabase.co'
 }
 
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRiYmp3enBpbGh6eGlkcnR0eXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NTU0ODksImV4cCI6MjA3NzEzMTQ4OX0.UGnQ7ftOd_SRqnEo0aMSqovIIhcj92qeFBYlbz0sq2c';
+
+// 提供默认值以防止应用崩溃
 if (!supabaseAnonKey) {
-  console.error('错误: Supabase Anon Key未正确配置，请确保环境变量VITE_SUPABASE_ANON_KEY已设置')
-  throw new Error('Supabase Anon Key未正确配置')
+  console.error('Supabase Anon Key未配置，请检查.env文件中的VITE_SUPABASE_ANON_KEY')
+  // 开发环境下使用临时占位符避免崩溃
+  supabaseAnonKey = 'default-anon-key'
 }
 
 let supabase;
