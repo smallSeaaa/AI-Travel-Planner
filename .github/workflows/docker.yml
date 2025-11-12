@@ -3,32 +3,46 @@ name: Build and Push Docker image to Aliyun
 on:
   push:
     branches:
-      - main  # 只在 main 分支推送时触发（可改）
+      - main  # 只在 main 分支推送时触发
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 拉取代码
+      # 1. 拉取代码
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2️⃣ 登录阿里云镜像仓库
+      # 2. 登录阿里云镜像仓库
       - name: Login to Aliyun Container Registry
         run: |
           echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login \
             --username=${{ secrets.ALIYUN_USERNAME }} \
             --password-stdin ${{ secrets.ALIYUN_REGISTRY }}
 
-      # 3️⃣ 构建 Docker 镜像
+      # 3. 构建 Docker 镜像
       - name: Build Docker image
         run: |
           IMAGE=${{ secrets.ALIYUN_REGISTRY }}/smallseaaa/ai-travel-planner:latest
           docker build -t $IMAGE .
 
-      # 4️⃣ 推送到阿里云镜像仓库
+      # 4. 推送到阿里云镜像仓库
       - name: Push Docker image
         run: |
           IMAGE=${{ secrets.ALIYUN_REGISTRY }}/smallseaaa/ai-travel-planner:latest
           docker push $IMAGE
+
+      # 5. 导出镜像为 tar 文件
+      - name: Save Docker image as tar
+        run: |
+          IMAGE=${{ secrets.ALIYUN_REGISTRY }}/smallseaaa/ai-travel-planner:latest
+          docker save $IMAGE -o ai-travel-planner-latest.tar
+
+      # 6. 上传 tar 文件到 GitHub Release
+      - name: Upload Docker image tar to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ai-travel-planner-latest.tar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
