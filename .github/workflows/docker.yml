@@ -5,6 +5,9 @@ on:
     branches:
       - main  # 只在 main 分支推送时触发
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
